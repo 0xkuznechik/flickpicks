@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --font-cinzel: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-zinc-100;
+}
+
+a {
+  @apply text-gold-400 hover:text-gold-500;
+}
+
+.container-pad {
+  @apply mx-auto w-full max-w-6xl px-4 md:px-8;
+}
+
+.card {
+  @apply rounded-2xl border border-white/10 bg-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.35)] backdrop-blur;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10;
+}
+
+.btn-primary {
+  @apply border-gold-500/30 bg-gold-500/10 text-gold-400 hover:bg-gold-500/15;
+}
+
+.input {
+  @apply w-full rounded-xl border border-white/10 bg-ink-900/60 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-gold-500/40;
+}
+
+.label {
+  @apply text-sm font-medium text-zinc-200;
+}
+
+.small-muted {
+  @apply text-sm text-zinc-400;
+}

@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oscars
+      POSTGRES_PASSWORD: oscars
+      POSTGRES_DB: oscars_pool
+    ports:
+      - "5432:5432"
+    volumes:
+      - oscars_pool_pgdata:/var/lib/postgresql/data
+volumes:
+  oscars_pool_pgdata:
