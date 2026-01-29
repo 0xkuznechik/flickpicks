@@ -4,253 +4,297 @@ export type BallotCategory = {
   nominees: string[];
 };
 
-// Skeleton data. Replace with the current year's nominees via your own scrape/API.
 export const BALLOT_CATEGORIES: BallotCategory[] = [
-  {
-    key: "best_picture",
-    title: "Best Picture",
-    nominees: [
-      "Anora",
-      "The Brutalist",
-      "Conclave",
-      "Dune: Part Two",
-      "Emilia Pérez",
-      "A Complete Unknown",
-      "Nickel Boys",
-      "September 5",
-      "Sing Sing",
-      "Wicked"
-    ]
-  },
-  {
-    key: "best_directing",
-    title: "Best Directing",
-    nominees: [
-      "Sean Baker (Anora)",
-      "Brady Corbet (The Brutalist)",
-      "Denis Villeneuve (Dune: Part Two)",
-      "Jacques Audiard (Emilia Pérez)",
-      "Edward Berger (Conclave)"
-    ]
-  },
   {
     key: "best_actor",
     title: "Best Actor in a Leading Role",
     nominees: [
-      "Adrien Brody (The Brutalist)",
-      "Timothée Chalamet (A Complete Unknown)",
-      "Colman Domingo (Sing Sing)",
-      "Ralph Fiennes (Conclave)",
-      "Sebastian Stan (The Apprentice)"
-    ]
+      "Timothee Chalamet (Marty Supreme)",
+      "Leonardo DiCaprio (One Battle after Another)",
+      "Ethan Hawke (Blue Moon)",
+      "Michael B. Jordan (Sinners)",
+      "Wagner Moura (The Secret Agent)",
+    ],
   },
-  {
-    key: "best_actress",
-    title: "Best Actress in a Leading Role",
-    nominees: [
-      "Cynthia Erivo (Wicked)",
-      "Karla Sofía Gascón (Emilia Pérez)",
-      "Angelina Jolie (Maria)",
-      "Mikey Madison (Anora)",
-      "Demi Moore (The Substance)"
-    ]
-  },
+
   {
     key: "best_supporting_actor",
     title: "Best Actor in a Supporting Role",
     nominees: [
-      "Yura Borisov (Anora)",
-      "Kieran Culkin (A Real Pain)",
-      "Edward Norton (A Complete Unknown)",
-      "Guy Pearce (The Brutalist)",
-      "Denzel Washington (Gladiator II)"
-    ]
+      "Benicio Del Toro (One Battle after Another)",
+      "Jacob Elordi (Frankenstein)",
+      "Delroy Lindo (Sinners)",
+      "Sean Penn (One Battle after Another)",
+      "Stellan Skarsgård (Sentimental Value)",
+    ],
   },
+
+  {
+    key: "best_actress",
+    title: "Best Actress in a Leading Role",
+    nominees: [
+      "Jessie Buckley (Hamnet)",
+      "Rose Byrne (If I Had Legs I'd Kick You)",
+      "Kate Hudson (Song Sung Blue)",
+      "Renate Reinsve (Sentimental Value)",
+      "Emma Stone (Bugonia)",
+    ],
+  },
+
   {
     key: "best_supporting_actress",
     title: "Best Actress in a Supporting Role",
     nominees: [
-      "Monica Barbaro (A Complete Unknown)",
-      "Danielle Deadwyler (The Piano Lesson)",
-      "Felicity Jones (The Brutalist)",
-      "Isabella Rossellini (Conclave)",
-      "Zoe Saldaña (Emilia Pérez)"
-    ]
+      "Elle Fanning (Sentimental Value)",
+      "Inga Ibsdotter Lilleaas (Sentimental Value)",
+      "Amy Madigan (Weapons)",
+      "Wunmi Mosaku (Sinners)",
+      "Teyana Taylor (One Battle after Another)",
+    ],
   },
-  {
-    key: "best_original_screenplay",
-    title: "Best Writing (Original Screenplay)",
-    nominees: [
-      "Anora",
-      "The Brutalist",
-      "A Real Pain",
-      "September 5",
-      "The Substance"
-    ]
-  },
-  {
-    key: "best_adapted_screenplay",
-    title: "Best Writing (Adapted Screenplay)",
-    nominees: [
-      "A Complete Unknown",
-      "Conclave",
-      "Emilia Pérez",
-      "Nickel Boys",
-      "Sing Sing"
-    ]
-  },
+
   {
     key: "best_animated_feature",
     title: "Best Animated Feature Film",
     nominees: [
-      "Flow",
-      "Inside Out 2",
-      "Memoir of a Snail",
-      "Wallace & Gromit: Vengence Most Fowl",
-      "The Wild Robot"
-    ]
+      "Arco",
+      "Elio",
+      "KPop Demon Hunters",
+      "Little Amélie or the Character of Rain",
+      "Zootopia 2",
+    ],
   },
-  {
-    key: "best_international_feature",
-    title: "Best International Feature Film",
-    nominees: [
-      "The Girl with the Needle (Denmark)",
-      "Emilia Pérez (France)",
-      "The Seed of the Sacred Fig (Germany)",
-      "Vermiglio (Italy)",
-      "I'm Still Here (Brazil)"
-    ]
-  },
-  {
-    key: "best_documentary_feature",
-    title: "Best Documentary Feature Film",
-    nominees: [
-      "Black Box Diaries",
-      "No Other Land",
-      "Porcelain War",
-      "Soundtrack to a Coup d'Etat",
-      "Sugarcane"
-    ]
-  },
-  {
-    key: "best_documentary_short",
-    title: "Best Documentary Short Film",
-    nominees: [
-      "Death by Numbers",
-      "I Am Ready, Warden",
-      "Incident",
-      "Instruments of a Beating Heart",
-      "The Only Girl in the Orchestra"
-    ]
-  },
-  {
-    key: "best_live_action_short",
-    title: "Best Short Film (Live Action)",
-    nominees: [
-      "A Lien",
-      "Anu",
-      "I'm Not a Robot",
-      "The Last Ranger",
-      "The Man Who Could Not Remain Silent"
-    ]
-  },
+
   {
     key: "best_animated_short",
     title: "Best Animated Short Film",
     nominees: [
-      "Beautiful Men",
-      "In the Shadow of the Cypress",
-      "Magic Candies",
-      "Wander to Wonder",
-      "Yuck!"
-    ]
+      "Butterfly",
+      "Forevergreen",
+      "The Girl Who Cried Pearls",
+      "Retirement Plan",
+      "The Three Sisters",
+    ],
   },
+
   {
-    key: "best_original_score",
-    title: "Best Music (Original Score)",
+    key: "best_casting",
+    title: "Best Casting",
     nominees: [
-      "The Brutalist",
-      "Conclave",
-      "Dune: Part Two",
-      "Emilia Pérez",
-      "Wicked"
-    ]
+      "Hamnet",
+      "Marty Supreme",
+      "One Battle after Another",
+      "The Secret Agent",
+      "Sinners",
+    ],
   },
-  {
-    key: "best_original_song",
-    title: "Best Music (Original Song)",
-    nominees: [
-      "El Mal (Emilia Pérez)",
-      "The Journey (The Six Triple Eight)",
-      "Like A Bird (Sing Sing)",
-      "Mi Camino (Emilia Pérez)",
-      "Never Too Late (Elton John: Never Too Late)"
-    ]
-  },
-  {
-    key: "best_sound",
-    title: "Best Sound",
-    nominees: [
-      "A Complete Unknown",
-      "Dune: Part Two",
-      "Emilia Pérez",
-      "The Substance",
-      "Wicked"
-    ]
-  },
-  {
-    key: "best_production_design",
-    title: "Best Production Design",
-    nominees: [
-      "The Brutalist",
-      "Dune: Part Two",
-      "Gladiator II",
-      "Nosferatu",
-      "Wicked"
-    ]
-  },
-  {
-    key: "best_makeup_hairstyling",
-    title: "Best Makeup and Hairstyling",
-    nominees: [
-      "A Different Man",
-      "Emilia Pérez",
-      "Nosferatu",
-      "The Substance",
-      "Wicked"
-    ]
-  },
-  {
-    key: "best_visual_effects",
-    title: "Best Visual Effects",
-    nominees: [
-      "Alien: Romulus",
-      "Better Man",
-      "Dune: Part Two",
-      "Kingdom of the Planet of the Apes",
-      "Wicked"
-    ]
-  },
+
   {
     key: "best_cinematography",
     title: "Best Cinematography",
     nominees: [
-      "The Brutalist",
-      "Dune: Part Two",
-      "Emilia Pérez",
-      "Maria",
-      "Nosferatu"
-    ]
+      "Frankenstein",
+      "Marty Supreme",
+      "One Battle after Another",
+      "Sinners",
+      "Train Dreams",
+    ],
   },
+
   {
     key: "best_costume_design",
     title: "Best Costume Design",
     nominees: [
-      "Conclave",
-      "Dune: Part Two",
-      "Gladiator II",
-      "Nosferatu",
-      "Wicked"
-    ]
-  }
+      "Avatar: Fire and Ash",
+      "Frankenstein",
+      "Hamnet",
+      "Marty Supreme",
+      "Sinners",
+    ],
+  },
+
+  {
+    key: "best_directing",
+    title: "Best Directing",
+    nominees: [
+      "Chloé Zhao (Hamnet)",
+      "Josh Safdie (Marty Supreme)",
+      "Paul Thomas Anderson (One Battle after Another)",
+      "Joachim Trier (Sentimental Value)",
+      "Ryan Coogler (Sinners)",
+    ],
+  },
+
+  {
+    key: "best_documentary_feature",
+    title: "Best Documentary Feature Film",
+    nominees: [
+      "The Alabama Solution",
+      "Come See Me in the Good Light",
+      "Cutting through Rocks",
+      "Mr. Nobody against Putin",
+      "The Perfect Neighbor",
+    ],
+  },
+
+  {
+    key: "best_documentary_short",
+    title: "Best Documentary Short Film",
+    nominees: [
+      "All the Empty Rooms",
+      "Armed Only with a Camera: The Life and Death of Brent Renaud",
+      'Children No More: "Were and Are Gone"',
+      "The Devil Is Busy",
+      "Perfectly a Strangeness",
+    ],
+  },
+
+  {
+    key: "best_film_editing",
+    title: "Best Film Editing",
+    nominees: [
+      "F1",
+      "Marty Supreme",
+      "One Battle after Another",
+      "Sentimental Value",
+      "Sinners",
+    ],
+  },
+
+  {
+    key: "best_international_feature",
+    title: "Best International Feature Film",
+    nominees: [
+      "The Secret Agent",
+      "It Was Just an Accident",
+      "Sentimental Value",
+      "Sirāt",
+      "The Voice of Hind Rajab",
+    ],
+  },
+
+  {
+    key: "best_live_action_short",
+    title: "Best Short Film (Live Action)",
+    nominees: [
+      "Butcher's Stain",
+      "A Friend of Dorothy",
+      "Jane Austen's Period Drama",
+      "The Singers",
+      "Two People Exchanging Saliva",
+    ],
+  },
+
+  {
+    key: "best_makeup_hairstyling",
+    title: "Best Makeup and Hairstyling",
+    nominees: [
+      "Frankenstein",
+      "Kokuho",
+      "Sinners",
+      "The Smashing Machine",
+      "The Ugly Stepsister",
+    ],
+  },
+
+  {
+    key: "best_original_score",
+    title: "Best Music (Original Score)",
+    nominees: [
+      "Bugonia",
+      "Frankenstein",
+      "Hamnet",
+      "One Battle after Another",
+      "Sinners",
+    ],
+  },
+
+  {
+    key: "best_original_song",
+    title: "Best Music (Original Song)",
+    nominees: [
+      "Dear Me (Diane Warren)",
+      "Golden (KPop Demon Hunters)",
+      "I Lied To You (Sinners)",
+      "Sweet Dreams Of Joy (Viva Verdi!)",
+      "Train Dreams (Train Dreams)",
+    ],
+  },
+
+  {
+    key: "best_picture",
+    title: "Best Picture",
+    nominees: [
+      "Bugonia",
+      "F1",
+      "Frankenstein",
+      "Hamnet",
+      "Marty Supreme",
+      "One Battle after Another",
+      "The Secret Agent",
+      "Sentimental Value",
+      "Sinners",
+      "Train Dreams",
+    ],
+  },
+
+  {
+    key: "best_production_design",
+    title: "Best Production Design",
+    nominees: [
+      "Frankenstein",
+      "Hamnet",
+      "Marty Supreme",
+      "One Battle after Another",
+      "Sinners",
+    ],
+  },
+
+  {
+    key: "best_sound",
+    title: "Best Sound",
+    nominees: [
+      "F1",
+      "Frankenstein",
+      "One Battle after Another",
+      "Sinners",
+      "Sirāt",
+    ],
+  },
+
+  {
+    key: "best_visual_effects",
+    title: "Best Visual Effects",
+    nominees: [
+      "Avatar: Fire and Ash",
+      "F1",
+      "Jurassic World Rebirth",
+      "The Lost Bus",
+      "Sinners",
+    ],
+  },
+
+  {
+    key: "best_adapted_screenplay",
+    title: "Best Writing (Adapted Screenplay)",
+    nominees: [
+      "Bugonia",
+      "Frankenstein",
+      "Hamnet",
+      "One Battle after Another",
+      "Train Dreams",
+    ],
+  },
+
+  {
+    key: "best_original_screenplay",
+    title: "Best Writing (Original Screenplay)",
+    nominees: [
+      "Blue Moon",
+      "It Was Just an Accident",
+      "Marty Supreme",
+      "Sentimental Value",
+      "Sinners",
+    ],
+  },
 ];
