@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useSubmit } from "@remix-run/react";
 import { useEffect, useState } from "react";
-import { BALLOT_CATEGORIES } from "../lib/ballot-data";
+import { BALLOT_CATEGORIES, formatNominee } from "../lib/ballot-data";
 import { prisma } from "../utils/db.server";
 import { requireUser } from "../utils/auth.server";
 
@@ -172,18 +172,19 @@ export default function Ballot() {
               </div>
               <div className="p-3 space-y-1">
                 {c.nominees.map((nominee) => {
-                  const isSelected = localPicks[c.key] === nominee;
+                  const nomineeStr = formatNominee(nominee);
+                  const isSelected = localPicks[c.key] === nomineeStr;
                   return (
                     <button
-                      key={nominee}
-                      onClick={() => handleSelect(c.key, nominee)}
+                      key={nomineeStr}
+                      onClick={() => handleSelect(c.key, nomineeStr)}
                       disabled={locked}
                       className={`w-full text-left flex justify-between items-center px-3 py-2 rounded text-xs md:text-sm transition-colors ${isSelected
                           ? "bg-white/10 text-green-400 font-semibold"
                           : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                         }`}
                     >
-                      <span>{nominee}</span>
+                      <span>{nomineeStr}</span>
                       {isSelected && (
                         <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
                           Picked

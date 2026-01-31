@@ -11,3 +11,16 @@ TODO
   - add odds to the ballot
   - add allocation of points and how much to win
   - allow ability to lock a specific pick
+
+NOTES
+
+Commands
+
+# Linter
+npx prettier --write path/to/your/file.ts
+
+# "Compile" file
+npx tsc yourfile.ts --noEmit
+
+# "Compile" project
+npx tsc --project tsconfig.json --noEmit

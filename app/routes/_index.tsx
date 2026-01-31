@@ -85,23 +85,6 @@ export default function Index() {
 
       <main className="container-pad space-y-20 py-12">
 
-        {/* News Section */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/50 p-6 md:p-8">
-          <div className="grid gap-8 md:grid-cols-[300px_1fr]">
-            <div className="h-48 w-full rounded bg-zinc-800 md:h-auto">
-              {/* Placeholder image for news */}
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-4">
-                News Headline line1<br />News Headline line 2
-              </h2>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body News body
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* Most Nominated Movies */}
         <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8 text-center">
           <h2 className="mb-8 font-[var(--font-cinzel)] text-2xl font-bold text-white">Most Nominated Movies</h2>
