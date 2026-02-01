@@ -1,4 +1,5 @@
 services:
+  # PostgreSQL Database
   db:
     image: postgres:16
     restart: unless-stopped
@@ -10,5 +11,35 @@ services:
       - "5432:5432"
     volumes:
       - oscars_pool_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oscars"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Remix Application (for local development)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev:remix"
+    ports:
+      - "5173:5173"
+    environment:
+      DATABASE_URL: postgresql://oscars:oscars@db:5432/oscars_pool
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-in-production}
+      NODE_ENV: development
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      - /app/node_modules
+      - /app/build
+    depends_on:
+      db:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
 volumes:
   oscars_pool_pgdata:

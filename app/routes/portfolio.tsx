@@ -36,7 +36,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     // Enrich picks with category info and odds
     enrichedPicks = lockedPicks.map((pick) => {
-      const category = BALLOT_CATEGORIES.find((c) => c.key === pick.categoryKey);
+      const category = BALLOT_CATEGORIES.find(
+        (c) => c.key === pick.categoryKey
+      );
       const nominee = category?.nominees.find(
         (n) => formatNominee(n) === pick.nominee
       );
@@ -184,7 +186,9 @@ export default function Portfolio() {
         {lockedPicks.length === 0 ? (
           <div className="max-w-3xl mx-auto text-center py-12">
             <p className="text-zinc-400 text-lg mb-6">
-              {user ? "You haven't locked any picks yet." : "Sign up to lock your picks and build your portfolio!"}
+              {user
+                ? "You haven't locked any picks yet."
+                : "Sign up to lock your picks and build your portfolio!"}
             </p>
             <Link
               to={user ? "/ballot" : "/join"}

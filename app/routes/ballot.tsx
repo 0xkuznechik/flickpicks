@@ -348,7 +348,10 @@ export default function Ballot() {
   };
 
   const handleBetAmountBlur = (categoryKey: string, nominee: string) => {
-    const newBets = { ...betAmounts, [categoryKey]: betAmounts[categoryKey] || 0 };
+    const newBets = {
+      ...betAmounts,
+      [categoryKey]: betAmounts[categoryKey] || 0,
+    };
 
     // If not logged in, save to localStorage
     if (!user && typeof window !== "undefined") {
@@ -780,7 +783,11 @@ export default function Ballot() {
           {!locked && getPicksToLock().length > 0 && (
             <div className="flex justify-center">
               <button
-                onClick={() => user ? setShowLockAllModal(true) : (window.location.href = "/join?redirectTo=/ballot")}
+                onClick={() =>
+                  user
+                    ? setShowLockAllModal(true)
+                    : (window.location.href = "/join?redirectTo=/ballot")
+                }
                 className="rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)] transition-all"
               >
                 {user ? "Lock All Picks" : "Sign Up to Lock Picks"}

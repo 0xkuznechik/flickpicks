@@ -78,8 +78,8 @@ async function main() {
 
   const { host, port } = parseDb(dbUrl);
 
-  // Start Postgres
-  await run(dockerCompose.cmd, [...dockerCompose.baseArgs, "up", "-d"], { quiet: false });
+  // Start Postgres (only the db service, not the app)
+  await run(dockerCompose.cmd, [...dockerCompose.baseArgs, "up", "-d", "db"], { quiet: false });
 
   // Wait for DB to accept connections
   await waitForTcp(host, port);
