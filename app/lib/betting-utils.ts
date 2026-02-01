@@ -47,7 +47,10 @@ export function calculateProfit(betAmount: number, odds: BettingOdds): number {
  * @param odds - American betting odds (+X or -Y)
  * @returns The total return (original bet + profit)
  */
-export function calculateTotalReturn(betAmount: number, odds: BettingOdds): number {
+export function calculateTotalReturn(
+  betAmount: number,
+  odds: BettingOdds
+): number {
   const profit = calculateProfit(betAmount, odds);
   return betAmount + profit;
 }
@@ -92,7 +95,10 @@ export function formatOdds(odds: BettingOdds): string {
  * @param odds - Negative American odds (favorites only)
  * @returns Required bet amount
  */
-export function calculateRequiredBetForProfit(targetProfit: number, odds: BettingOdds): number {
+export function calculateRequiredBetForProfit(
+  targetProfit: number,
+  odds: BettingOdds
+): number {
   if (odds >= 0) {
     throw new Error("This function is only for negative odds (favorites)");
   }

@@ -103,10 +103,14 @@ console.log(
   `Total Potential Profit (if all win): $${totalPotentialProfit.toFixed(2)}`
 );
 console.log(
-  `Total Potential Return (if all win): $${(totalBetAmount + totalPotentialProfit).toFixed(2)}`
+  `Total Potential Return (if all win): $${(
+    totalBetAmount + totalPotentialProfit
+  ).toFixed(2)}`
 );
 console.log(
-  `ROI (if all win): ${((totalPotentialProfit / totalBetAmount) * 100).toFixed(2)}%`
+  `ROI (if all win): ${((totalPotentialProfit / totalBetAmount) * 100).toFixed(
+    2
+  )}%`
 );
 
 console.log("\n\n=== ODDS COMPARISON ===\n");
@@ -122,7 +126,9 @@ oddsToCompare.forEach((odds) => {
   const probability = calculateImpliedProbability(odds);
 
   console.log(
-    `${formatOdds(odds).padEnd(6)} | Profit: $${profit.toFixed(2).padStart(7)} | ` +
+    `${formatOdds(odds).padEnd(6)} | Profit: $${profit
+      .toFixed(2)
+      .padStart(7)} | ` +
       `Return: $${(100 + profit).toFixed(2).padStart(7)} | ` +
       `Probability: ${(probability * 100).toFixed(2).padStart(5)}%`
   );

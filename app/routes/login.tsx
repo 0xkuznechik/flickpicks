@@ -16,6 +16,10 @@ const Schema = z.object({
     .max(256),
 });
 
+type ActionData =
+  | { ok: false; fieldErrors: { email?: string[]; password?: string[] } }
+  | { ok: false; formError: string };
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const userId = await getUserId(request);
   if (userId) throw redirect("/ballot");
@@ -77,7 +81,9 @@ export default function Login() {
                 placeholder="you@example.com"
                 required
               />
-              {actionData?.fieldErrors?.email ? (
+              {actionData &&
+              "fieldErrors" in actionData &&
+              actionData.fieldErrors?.email ? (
                 <p className="mt-1 text-sm text-red-300">
                   {actionData.fieldErrors.email.join(", ")}
                 </p>
@@ -97,14 +103,16 @@ export default function Login() {
                 placeholder="••••••••"
                 required
               />
-              {actionData?.fieldErrors?.password ? (
+              {actionData &&
+              "fieldErrors" in actionData &&
+              actionData.fieldErrors?.password ? (
                 <p className="mt-1 text-sm text-red-300">
                   {actionData.fieldErrors.password.join(", ")}
                 </p>
               ) : null}
             </div>
 
-            {actionData?.formError ? (
+            {actionData && "formError" in actionData && actionData.formError ? (
               <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
                 {actionData.formError}
               </p>

@@ -9,6 +9,11 @@ import {
 } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import { BALLOT_CATEGORIES, formatNominee } from "../lib/ballot-data";
+import {
+  formatOdds,
+  calculateProfit,
+  calculateTotalReturn,
+} from "../lib/betting-utils";
 import { prisma } from "../utils/db.server";
 import { requireUser } from "../utils/auth.server";
 
@@ -99,6 +104,8 @@ export default function Ballot() {
 
   // Optimistic UI for picks
   const [localPicks, setLocalPicks] = useState(pickMap);
+  // Bet amounts for each category
+  const [betAmounts, setBetAmounts] = useState<Record<string, number>>({});
 
   // Sync with server data
   useEffect(() => {
@@ -117,7 +124,38 @@ export default function Ballot() {
     submit(formData, { method: "post", replace: true });
   };
 
-  const betsCast = Object.keys(localPicks).length;
+  const handleBetAmountChange = (categoryKey: string, amount: string) => {
+    const numAmount = parseFloat(amount) || 0;
+    setBetAmounts((prev) => ({ ...prev, [categoryKey]: numAmount }));
+  };
+
+  // Calculate total potential winnings
+  const calculateTotalPotentialWinnings = () => {
+    let total = 0;
+    categories.forEach((category) => {
+      const selectedNominee = localPicks[category.key];
+      const betAmount = betAmounts[category.key] || 0;
+      if (selectedNominee && betAmount > 0) {
+        const nominee = category.nominees.find(
+          (n) => formatNominee(n) === selectedNominee
+        );
+        if (nominee?.odds) {
+          const profit = calculateProfit(betAmount, nominee.odds);
+          total += profit;
+        }
+      }
+    });
+    return total;
+  };
+
+  // Calculate total bet amount across all selections
+  const calculateTotalSelectionAmount = () => {
+    let total = 0;
+    Object.values(betAmounts).forEach((amount) => {
+      total += amount || 0;
+    });
+    return total;
+  };
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
@@ -163,29 +201,19 @@ export default function Ballot() {
           <div className="flex justify-center gap-0 md:justify-center border border-gold-400/40 rounded-lg overflow-hidden max-w-4xl mx-auto divide-x divide-gold-400/40">
             <div className="flex-1 bg-black p-3 text-center">
               <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Movies
-              </div>
-              <div className="text-lg md:text-xl font-bold text-white">0</div>
-            </div>
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Bets Cast
+                Total Selection Amount
               </div>
               <div className="text-lg md:text-xl font-bold text-white">
-                {betsCast}
+                ${calculateTotalSelectionAmount().toFixed(2)}
               </div>
             </div>
             <div className="flex-1 bg-black p-3 text-center">
               <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Bets Winning
+                Potential Profit
               </div>
-              <div className="text-lg md:text-xl font-bold text-white">0</div>
-            </div>
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Total Payout
+              <div className="text-lg md:text-xl font-bold text-gold-400">
+                ${calculateTotalPotentialWinnings().toFixed(2)}
               </div>
-              <div className="text-lg md:text-xl font-bold text-white">0</div>
             </div>
           </div>
 
@@ -210,28 +238,94 @@ export default function Ballot() {
                   {c.title}
                 </h3>
               </div>
-              <div className="p-3 space-y-1">
+              <div className="p-3 space-y-3">
                 {c.nominees.map((nominee) => {
                   const nomineeStr = formatNominee(nominee);
                   const isSelected = localPicks[c.key] === nomineeStr;
+                  const betAmount = betAmounts[c.key] || 0;
+                  const profit =
+                    isSelected && nominee.odds && betAmount > 0
+                      ? calculateProfit(betAmount, nominee.odds)
+                      : 0;
+                  const totalReturn =
+                    isSelected && nominee.odds && betAmount > 0
+                      ? calculateTotalReturn(betAmount, nominee.odds)
+                      : 0;
+
                   return (
-                    <button
-                      key={nomineeStr}
-                      onClick={() => handleSelect(c.key, nomineeStr)}
-                      disabled={locked}
-                      className={`w-full text-left flex justify-between items-center px-3 py-2 rounded text-xs md:text-sm transition-colors ${
-                        isSelected
-                          ? "bg-white/10 text-green-400 font-semibold"
-                          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                      }`}
-                    >
-                      <span>{nomineeStr}</span>
-                      {isSelected && (
-                        <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
-                          Picked
+                    <div key={nomineeStr} className="space-y-2">
+                      <button
+                        onClick={() => handleSelect(c.key, nomineeStr)}
+                        disabled={locked}
+                        className={`w-full text-left flex justify-between items-center px-3 py-2 rounded text-xs md:text-sm transition-colors ${
+                          isSelected
+                            ? "bg-white/10 text-green-400 font-semibold"
+                            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>{nomineeStr}</span>
+                          {nominee.odds && (
+                            <span className="text-[10px] text-gold-400 font-mono">
+                              {formatOdds(nominee.odds)}
+                            </span>
+                          )}
                         </span>
+                        {isSelected && (
+                          <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
+                            Picked
+                          </span>
+                        )}
+                      </button>
+
+                      {isSelected && nominee.odds && (
+                        <div className="ml-3 p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-zinc-400 whitespace-nowrap">
+                              Bet Amount:
+                            </label>
+                            <div className="relative flex-1">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500">
+                                $
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={betAmount || ""}
+                                onChange={(e) =>
+                                  handleBetAmountChange(c.key, e.target.value)
+                                }
+                                disabled={locked}
+                                placeholder="0.00"
+                                className="w-full pl-5 pr-2 py-1 bg-black border border-zinc-700 rounded text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-gold-500"
+                              />
+                            </div>
+                          </div>
+
+                          {betAmount > 0 && (
+                            <div className="text-xs space-y-1 pt-2 border-t border-zinc-700">
+                              <div className="flex justify-between">
+                                <span className="text-zinc-400">
+                                  Potential Profit:
+                                </span>
+                                <span className="text-gold-400 font-mono font-semibold">
+                                  ${profit.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-zinc-400">
+                                  Total Return:
+                                </span>
+                                <span className="text-green-400 font-mono font-semibold">
+                                  ${totalReturn.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>

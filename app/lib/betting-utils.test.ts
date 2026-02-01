@@ -26,7 +26,7 @@ describe("calculateProfit", () => {
     });
 
     it("should handle decimal bet amounts", () => {
-      expect(calculateProfit(25.50, 150)).toBeCloseTo(38.25, 2);
+      expect(calculateProfit(25.5, 150)).toBeCloseTo(38.25, 2);
     });
   });
 
@@ -59,7 +59,9 @@ describe("calculateProfit", () => {
     });
 
     it("should throw error for negative bet amount", () => {
-      expect(() => calculateProfit(-100, 150)).toThrow("Bet amount cannot be negative");
+      expect(() => calculateProfit(-100, 150)).toThrow(
+        "Bet amount cannot be negative"
+      );
     });
 
     it("should throw error for odds of 0", () => {
@@ -143,7 +145,9 @@ describe("calculateImpliedProbability", () => {
 
   describe("edge cases", () => {
     it("should throw error for odds of 0", () => {
-      expect(() => calculateImpliedProbability(0)).toThrow("Odds cannot be zero");
+      expect(() => calculateImpliedProbability(0)).toThrow(
+        "Odds cannot be zero"
+      );
     });
 
     it("should return very low probability for very high positive odds", () => {
