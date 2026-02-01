@@ -121,48 +121,45 @@ export default function Ballot() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 bg-black py-4">
-        <div className="container-pad flex items-center justify-between">
-          <div className="flex-1"></div>
-          <div className="flex items-center gap-3">
-            <span className="font-[var(--font-cinzel)] text-xl tracking-widest text-gold-400">
-              FLICK
-            </span>
-            <img
-              src="/images/oscars-statuettes.png"
-              alt="Logo"
-              className="h-10 w-auto"
-            />
-            <span className="font-[var(--font-cinzel)] text-xl tracking-widest text-gold-400">
-              PICKS
-            </span>
-          </div>
-          <div className="flex-1 flex justify-end gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span className="text-xs text-zinc-400">{user.email}</span>
+      {/* Sticky Header Container */}
+      <div className="sticky top-0 z-50 bg-black">
+        {/* Navigation */}
+        <nav className="border-b border-white/10 bg-black py-4">
+          <div className="container-pad flex items-center justify-between">
+            <div className="flex-1"></div>
+            <div className="flex items-center gap-3">
+              <span className="font-[var(--font-cinzel)] text-xl tracking-widest text-gold-400">
+                FLICK
+              </span>
+              <img
+                src="/images/oscars-statuettes.png"
+                alt="Logo"
+                className="h-10 w-auto"
+              />
+              <span className="font-[var(--font-cinzel)] text-xl tracking-widest text-gold-400">
+                PICKS
+              </span>
             </div>
-            {/* Logout could go here */}
+            <div className="flex-1 flex justify-end gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                <span className="text-xs text-zinc-400">{user.email}</span>
+              </div>
+              {/* Logout could go here */}
+            </div>
           </div>
-        </div>
-        <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-sm font-medium tracking-wide text-zinc-400">
-          <Link to="/" className="hover:text-zinc-200">
-            Home
-          </Link>
-          <Link to="/ballot" className="text-gold-400 hover:text-gold-300">
-            My Selections
-          </Link>
-        </div>
-      </nav>
+          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-sm font-medium tracking-wide text-zinc-400">
+            <Link to="/" className="hover:text-zinc-200">
+              Home
+            </Link>
+            <Link to="/ballot" className="text-gold-400 hover:text-gold-300">
+              My Selections
+            </Link>
+          </div>
+        </nav>
 
-      <main className="container-pad py-8 space-y-8">
         {/* Header Stats */}
-        <div className="text-center space-y-6">
-          <h1 className="font-[var(--font-cinzel)] text-3xl font-bold tracking-tight text-white md:text-4xl">
-            98th Academy Awards
-          </h1>
-
+        <div className="text-center space-y-6 py-6 border-b border-white/10 bg-black">
           <div className="flex justify-center gap-0 md:justify-center border border-gold-400/40 rounded-lg overflow-hidden max-w-4xl mx-auto divide-x divide-gold-400/40">
             <div className="flex-1 bg-black p-3 text-center">
               <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
@@ -198,9 +195,11 @@ export default function Ballot() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Categories Grid */}
-        <div className="grid gap-6 md:grid-cols-2">
+      <main className="container-pad py-8">
+        {/* Categories Grid - Single Column */}
+        <div className="max-w-3xl mx-auto space-y-6">
           {categories.map((c) => (
             <div
               key={c.key}
