@@ -78,8 +78,11 @@ export function isCloudflareIp(ip: string | null): boolean {
  * Returns null if request is valid, or a Response to return to the client
  */
 export function enforceCloudflareOnly(request: Request): Response | null {
-  // Skip enforcement in development
-  if (process.env.NODE_ENV === "development") {
+  // Skip enforcement in development or if explicitly disabled
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.DISABLE_CLOUDFLARE_CHECK === "true"
+  ) {
     return null;
   }
 
