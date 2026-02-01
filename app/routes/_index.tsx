@@ -2,21 +2,7 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { getUser } from "../utils/auth.server";
-
-type Movie = {
-  id: string;
-  title: string;
-  posterSrc: string; // Using colors or placeholders if images missing
-};
-
-// Placeholder movies for "Most Nominated Movies"
-const nominatedMovies: Movie[] = [
-  { id: "anora", title: "Anora", posterSrc: "/images/poster-anora.png" }, // Assuming assets exist or will fail gracefully
-  { id: "brutalist", title: "The Brutalist", posterSrc: "/images/poster-brutalist.png" },
-  { id: "dune2", title: "Dune: Part Two", posterSrc: "/images/poster-dune.png" },
-  { id: "emilia", title: "Emilia Pérez", posterSrc: "/images/poster-emilia.png" },
-  { id: "wicked", title: "Wicked", posterSrc: "/images/poster-wicked.png" }
-];
+import { getTopNominatedMovies } from "../lib/ballot-stats";
 
 const keyDates = [
   { date: "Jan 22", event: "98th Oscars Nominations Announcement" },
@@ -44,11 +30,12 @@ const keyDates = [
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
-  return json({ user });
+  const topMovies = getTopNominatedMovies(5);
+  return json({ user, topMovies });
 }
 
 export default function Index() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, topMovies } = useLoaderData<typeof loader>();
   const ctaHref = user ? "/ballot" : "/login";
 
   return (
@@ -89,12 +76,25 @@ export default function Index() {
         <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8 text-center">
           <h2 className="mb-8 font-[var(--font-cinzel)] text-2xl font-bold text-white">Most Nominated Movies</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-            {nominatedMovies.map((movie) => (
-              <div key={movie.id} className="flex flex-col gap-3">
-                <div className="aspect-[2/3] w-full rounded bg-zinc-300">
-                  {/* Ideally actual poster images here */}
+            {topMovies.map((movie) => (
+              <div key={movie.movieName} className="flex flex-col gap-3">
+                <div className="aspect-[2/3] w-full rounded bg-zinc-800 overflow-hidden">
+                  {movie.movieData?.poster ? (
+                    <img
+                      src={movie.movieData.poster}
+                      alt={movie.movieName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                      No Poster
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs font-bold uppercase tracking-wider text-zinc-200">{movie.title}</div>
+                <div className="flex flex-col gap-1">
+                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-200">{movie.movieName}</div>
+                  <div className="text-[10px] text-gold-400">{movie.nominationCount} nominations</div>
+                </div>
               </div>
             ))}
           </div>

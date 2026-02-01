@@ -1,9 +1,11 @@
 import { BALLOT_CATEGORIES, type BallotCategory, type Nominee } from "./ballot-data";
+import { getMovie, type Movie } from "./movies-data";
 
 export type MovieStats = {
   movieName: string;
   nominationCount: number;
   categories: string[];
+  movieData?: Movie;
 };
 
 /**
@@ -52,7 +54,8 @@ export function getMovieStats(movieName: string): MovieStats {
   return {
     movieName,
     nominationCount: categories.length,
-    categories
+    categories,
+    movieData: getMovie(movieName)
   };
 }
 
@@ -88,7 +91,8 @@ export function getAllMovieStats(): MovieStats[] {
     stats.push({
       movieName,
       nominationCount: categorySet.size,
-      categories: Array.from(categorySet)
+      categories: Array.from(categorySet),
+      movieData: getMovie(movieName)
     });
   }
 
