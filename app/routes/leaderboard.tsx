@@ -28,7 +28,7 @@ export default function Leaderboard() {
             <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">
               Status
             </div>
-            <h1 className="font-[var(--font-cinzel)] text-3xl text-zinc-100">
+            <h1 className="font-[var(--font-inter)] text-5xl text-zinc-100">
               Leaderboard
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">

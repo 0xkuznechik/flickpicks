@@ -59,7 +59,7 @@ export default function Login() {
     <div className="container-pad py-10 md:py-16">
       <div className="mx-auto w-full max-w-lg">
         <div className="card p-6 md:p-8">
-          <h1 className="text-2xl font-semibold">Log in</h1>
+          <h1 className="text-5xl font-semibold">Log in</h1>
           <p className="mt-2 text-zinc-300">
             This skeleton auto-creates an account the first time you log in with
             a new email.

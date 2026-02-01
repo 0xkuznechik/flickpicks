@@ -67,21 +67,23 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 bg-black py-4">
+      {/* Sticky Header Container */}
+      <div className="sticky top-0 z-50 bg-black">
+        {/* Navigation */}
+        <nav className="border-b border-white/10 bg-black py-4">
         <div className="container-pad flex items-center justify-between">
           <div className="flex-1"></div> {/* Spacer to center logo */}
           <div className="flex items-center gap-3">
-            <span className="font-[var(--font-cinzel)] text-xl tracking-widest text-gold-400">
+            <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
               FLICK
             </span>
             <img
-              src="/images/oscars-statuettes.png"
+              src="/images/oscarspoollogo.png"
               alt="Logo"
               className="h-10 w-auto"
             />{" "}
             {/* Assuming generic logo or statuette */}
-            <span className="font-[var(--font-cinzel)] text-xl tracking-widest text-gold-400">
+            <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
               PICKS
             </span>
           </div>
@@ -110,20 +112,24 @@ export default function Index() {
             )}
           </div>
         </div>
-        <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-sm font-medium tracking-wide text-zinc-400">
+        <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
           <Link to="/" className="text-gold-400 hover:text-gold-300">
             Home
           </Link>
           <Link to="/ballot" className="hover:text-zinc-200">
-            My Selections
+            Make Selections
+          </Link>
+          <Link to="/portfolio" className="hover:text-zinc-200">
+            Portfolio
           </Link>
         </div>
       </nav>
+      </div>
 
       <main className="container-pad space-y-20 py-12">
         {/* Most Nominated Movies */}
         <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8 text-center">
-          <h2 className="mb-8 font-[var(--font-cinzel)] text-2xl font-bold text-white">
+          <h2 className="mb-8 font-[var(--font-inter)] text-5xl font-bold text-white">
             Most Nominated Movies
           </h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
@@ -169,7 +175,7 @@ export default function Index() {
 
         {/* Key Event Dates */}
         <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8">
-          <h2 className="mb-8 text-center font-[var(--font-cinzel)] text-2xl font-bold text-white">
+          <h2 className="mb-8 text-center font-[var(--font-inter)] text-5xl font-bold text-white">
             Key Event Dates
           </h2>
           <div className="mx-auto max-w-3xl space-y-3">
