@@ -1,4 +1,8 @@
-import type { LinksFunction, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import type {
+  LinksFunction,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
 import { json } from "@remix-run/node";
 import {
   Links,
@@ -7,18 +11,19 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData
+  useLoaderData,
 } from "@remix-run/react";
 import stylesheet from "./styles/tailwind.css?url";
 import { getUser } from "./utils/auth.server";
 
-export const meta: MetaFunction = () =>
-  ([
-    { title: "Oscars Pool" },
-    { name: "viewport", content: "width=device-width, initial-scale=1" }
-  ]);
+export const meta: MetaFunction = () => [
+  { title: "Oscars Pool" },
+  { name: "viewport", content: "width=device-width, initial-scale=1" },
+];
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: stylesheet }];
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: stylesheet },
+];
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
@@ -35,8 +40,6 @@ export default function App() {
         <Links />
       </head>
       <body>
-
-
         <main>
           <Outlet />
         </main>

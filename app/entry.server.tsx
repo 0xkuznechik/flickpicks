@@ -8,7 +8,12 @@ export default function handleRequest(
   headers: Headers,
   context: EntryContext
 ) {
-  const markup = renderToString(<RemixServer context={context} url={request.url} />);
+  const markup = renderToString(
+    <RemixServer context={context} url={request.url} />
+  );
   headers.set("Content-Type", "text/html");
-  return new Response("<!DOCTYPE html>" + markup, { status: statusCode, headers });
+  return new Response("<!DOCTYPE html>" + markup, {
+    status: statusCode,
+    headers,
+  });
 }

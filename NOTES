@@ -4,7 +4,6 @@ TODO
   - sort out how prisma and the db work, esp with docker
 
   front page
-  - remove news
   - update dates dynamically
 
   ballot

@@ -7,8 +7,13 @@ import { getUser } from "../utils/auth.server";
 export async function loader({ request }: LoaderFunctionArgs) {
   const viewer = await getUser(request);
   const users = await prisma.user.findMany({
-    select: { id: true, email: true, lockedAt: true, _count: { select: { picks: true } } },
-    orderBy: { email: "asc" }
+    select: {
+      id: true,
+      email: true,
+      lockedAt: true,
+      _count: { select: { picks: true } },
+    },
+    orderBy: { email: "asc" },
   });
   return json({ viewer, users });
 }
@@ -20,10 +25,15 @@ export default function Leaderboard() {
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">Status</div>
-            <h1 className="font-[var(--font-cinzel)] text-3xl text-zinc-100">Leaderboard</h1>
+            <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">
+              Status
+            </div>
+            <h1 className="font-[var(--font-cinzel)] text-3xl text-zinc-100">
+              Leaderboard
+            </h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-              Picks submitted and lock status. Add scoring once winners are known.
+              Picks submitted and lock status. Add scoring once winners are
+              known.
             </p>
           </div>
           <div className="flex gap-2">

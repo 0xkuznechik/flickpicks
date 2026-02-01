@@ -2,11 +2,18 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, useActionData, useSearchParams } from "@remix-run/react";
 import { z } from "zod";
-import { createUserSession, getUserId, loginOrRegister } from "../utils/auth.server";
+import {
+  createUserSession,
+  getUserId,
+  loginOrRegister,
+} from "../utils/auth.server";
 
 const Schema = z.object({
   email: z.string().email("Enter a valid email").max(320),
-  password: z.string().min(8, "Password must be at least 8 characters").max(256)
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(256),
 });
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -30,7 +37,7 @@ export async function action({ request }: ActionFunctionArgs) {
     return json(
       {
         ok: false,
-        formError: "Invalid email/password for an existing account"
+        formError: "Invalid email/password for an existing account",
       },
       { status: 400 }
     );
@@ -50,14 +57,17 @@ export default function Login() {
         <div className="card p-6 md:p-8">
           <h1 className="text-2xl font-semibold">Log in</h1>
           <p className="mt-2 text-zinc-300">
-            This skeleton auto-creates an account the first time you log in with a new email.
+            This skeleton auto-creates an account the first time you log in with
+            a new email.
           </p>
 
           <Form method="post" className="mt-6 space-y-4">
             <input type="hidden" name="redirectTo" value={redirectTo} />
 
             <div>
-              <label className="label" htmlFor="email">Email</label>
+              <label className="label" htmlFor="email">
+                Email
+              </label>
               <input
                 id="email"
                 name="email"
@@ -68,12 +78,16 @@ export default function Login() {
                 required
               />
               {actionData?.fieldErrors?.email ? (
-                <p className="mt-1 text-sm text-red-300">{actionData.fieldErrors.email.join(", ")}</p>
+                <p className="mt-1 text-sm text-red-300">
+                  {actionData.fieldErrors.email.join(", ")}
+                </p>
               ) : null}
             </div>
 
             <div>
-              <label className="label" htmlFor="password">Password</label>
+              <label className="label" htmlFor="password">
+                Password
+              </label>
               <input
                 id="password"
                 name="password"
@@ -84,7 +98,9 @@ export default function Login() {
                 required
               />
               {actionData?.fieldErrors?.password ? (
-                <p className="mt-1 text-sm text-red-300">{actionData.fieldErrors.password.join(", ")}</p>
+                <p className="mt-1 text-sm text-red-300">
+                  {actionData.fieldErrors.password.join(", ")}
+                </p>
               ) : null}
             </div>
 
@@ -99,7 +115,8 @@ export default function Login() {
             </button>
 
             <p className="small-muted">
-              Not production auth. Replace with OAuth/passwordless, add rate limiting, and store secrets properly.
+              Not production auth. Replace with OAuth/passwordless, add rate
+              limiting, and store secrets properly.
             </p>
           </Form>
         </div>

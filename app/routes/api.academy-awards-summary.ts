@@ -8,7 +8,7 @@ const TTL_MS = 6 * 60 * 60 * 1000;
 export async function loader({ request }: LoaderFunctionArgs) {
   const now = Date.now();
   const existing = await prisma.externalCache.findUnique({
-    where: { cacheKey: CACHE_KEY }
+    where: { cacheKey: CACHE_KEY },
   });
 
   if (existing) {
@@ -18,25 +18,28 @@ export async function loader({ request }: LoaderFunctionArgs) {
         { source: "cache", fetchedAt: existing.fetchedAt, data: existing.json },
         {
           headers: {
-            "Cache-Control": `public, max-age=${Math.floor((TTL_MS - age) / 1000)}`
-          }
+            "Cache-Control": `public, max-age=${Math.floor(
+              (TTL_MS - age) / 1000
+            )}`,
+          },
         }
       );
     }
   }
 
-  const url = "https://en.wikipedia.org/api/rest_v1/page/summary/Academy_Awards";
+  const url =
+    "https://en.wikipedia.org/api/rest_v1/page/summary/Academy_Awards";
   const resp = await fetch(url, {
     headers: {
-      "User-Agent": "oscars-pool-remix-dev/1.0"
-    }
+      "User-Agent": "oscars-pool-remix-dev/1.0",
+    },
   });
 
   if (!resp.ok) {
     return json(
       {
         error: `Upstream fetch failed: ${resp.status} ${resp.statusText}`,
-        url
+        url,
       },
       { status: 502 }
     );
@@ -47,15 +50,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   await prisma.externalCache.upsert({
     where: { cacheKey: CACHE_KEY },
     create: { cacheKey: CACHE_KEY, json: data },
-    update: { json: data, fetchedAt: new Date() }
+    update: { json: data, fetchedAt: new Date() },
   });
 
   return json(
     { source: "upstream", fetchedAt: new Date().toISOString(), data },
     {
       headers: {
-        "Cache-Control": `public, max-age=${Math.floor(TTL_MS / 1000)}`
-      }
+        "Cache-Control": `public, max-age=${Math.floor(TTL_MS / 1000)}`,
+      },
     }
   );
 }

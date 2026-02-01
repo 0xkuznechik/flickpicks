@@ -1,4 +1,8 @@
-import { BALLOT_CATEGORIES, type BallotCategory, type Nominee } from "./ballot-data";
+import {
+  BALLOT_CATEGORIES,
+  type BallotCategory,
+  type Nominee,
+} from "./ballot-data";
 import { getMovie, type Movie } from "./movies-data";
 
 export type MovieStats = {
@@ -55,7 +59,7 @@ export function getMovieStats(movieName: string): MovieStats {
     movieName,
     nominationCount: categories.length,
     categories,
-    movieData: getMovie(movieName)
+    movieData: getMovie(movieName),
   };
 }
 
@@ -92,7 +96,7 @@ export function getAllMovieStats(): MovieStats[] {
       movieName,
       nominationCount: categorySet.size,
       categories: Array.from(categorySet),
-      movieData: getMovie(movieName)
+      movieData: getMovie(movieName),
     });
   }
 
@@ -136,7 +140,7 @@ export function getTotalUniqueMovies(): number {
  * Get movies nominated in specific categories
  */
 export function getMoviesInCategory(categoryKey: string): string[] {
-  const category = BALLOT_CATEGORIES.find(c => c.key === categoryKey);
+  const category = BALLOT_CATEGORIES.find((c) => c.key === categoryKey);
   if (!category) return [];
 
   const movies = new Set<string>();

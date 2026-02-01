@@ -8,7 +8,7 @@ import {
   getTopNominatedMovies,
   getMovieStats,
   getTotalUniqueMovies,
-  getMovieNominationCount
+  getMovieNominationCount,
 } from "./ballot-stats";
 
 console.log("=== BALLOT STATISTICS ===\n");
@@ -21,7 +21,9 @@ console.log("Top 10 Most Nominated Movies:");
 console.log("─".repeat(60));
 const topMovies = getTopNominatedMovies(10);
 topMovies.forEach((movie, index) => {
-  console.log(`${index + 1}. ${movie.movieName} - ${movie.nominationCount} nominations`);
+  console.log(
+    `${index + 1}. ${movie.movieName} - ${movie.nominationCount} nominations`
+  );
 });
 
 console.log("\n");
@@ -34,11 +36,11 @@ console.log(`Movie: ${sinnersStats.movieName}`);
 console.log(`Total Nominations: ${sinnersStats.nominationCount}`);
 if (sinnersStats.movieData) {
   console.log(`Poster: ${sinnersStats.movieData.poster}`);
-  console.log(`Director: ${sinnersStats.movieData.director || 'N/A'}`);
-  console.log(`Year: ${sinnersStats.movieData.year || 'N/A'}`);
+  console.log(`Director: ${sinnersStats.movieData.director || "N/A"}`);
+  console.log(`Year: ${sinnersStats.movieData.year || "N/A"}`);
 }
 console.log(`Categories:`);
-sinnersStats.categories.forEach(cat => {
+sinnersStats.categories.forEach((cat) => {
   console.log(`  - ${cat}`);
 });
 
@@ -48,7 +50,7 @@ console.log("\n");
 console.log("All Movies by Nomination Count:");
 console.log("─".repeat(60));
 const allStats = getAllMovieStats();
-allStats.forEach(movie => {
+allStats.forEach((movie) => {
   console.log(`${movie.movieName}: ${movie.nominationCount}`);
 });
 
@@ -60,7 +62,7 @@ console.log("─".repeat(60));
 topMovies.forEach((movie, index) => {
   console.log(`${index + 1}. ${movie.movieName}`);
   console.log(`   Nominations: ${movie.nominationCount}`);
-  console.log(`   Poster: ${movie.movieData?.poster || 'Not set'}`);
-  console.log(`   Director: ${movie.movieData?.director || 'N/A'}`);
+  console.log(`   Poster: ${movie.movieData?.poster || "Not set"}`);
+  console.log(`   Director: ${movie.movieData?.director || "N/A"}`);
   console.log();
 });
