@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Pick" ADD COLUMN     "betAmount" DECIMAL(10,2) NOT NULL DEFAULT 0;

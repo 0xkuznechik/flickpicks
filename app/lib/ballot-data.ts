@@ -1,6 +1,7 @@
 export type Nominee = {
   name: string;
   movie?: string;
+  odds?: number; // American betting odds format: +X or -Y
 };
 
 export type BallotCategory = {
