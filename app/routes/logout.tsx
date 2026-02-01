@@ -1,10 +1,10 @@
-import type { ActionFunctionArgs } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { logout } from "../utils/auth.server";
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
   return logout(request);
 }
 
-export default function Logout() {
-  return null;
+export async function action({ request }: ActionFunctionArgs) {
+  return logout(request);
 }

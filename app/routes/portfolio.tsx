@@ -32,7 +32,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Enrich picks with category info and odds
   const enrichedPicks = lockedPicks.map((pick) => {
     const category = BALLOT_CATEGORIES.find((c) => c.key === pick.categoryKey);
-    const nominee = category?.nominees.find((n) => formatNominee(n) === pick.nominee);
+    const nominee = category?.nominees.find(
+      (n) => formatNominee(n) === pick.nominee
+    );
 
     const odds = nominee?.odds || null;
     const betAmount = parseFloat(pick.betAmount.toString());
@@ -44,8 +46,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       nominee: pick.nominee,
       odds,
       betAmount,
-      potentialProfit: odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0,
-      totalReturn: odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0,
+      potentialProfit:
+        odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0,
+      totalReturn:
+        odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0,
       lockedAt: pick.lockedAt,
     };
   });
@@ -92,6 +96,12 @@ export default function Portfolio() {
                 <div className="h-2 w-2 rounded-full bg-green-500"></div>
                 <span className="text-xs text-zinc-400">{user.email}</span>
               </div>
+              <Link
+                to="/logout"
+                className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
+              >
+                Logout
+              </Link>
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
@@ -103,6 +113,9 @@ export default function Portfolio() {
             </Link>
             <Link to="/portfolio" className="text-gold-400 hover:text-gold-300">
               Portfolio
+            </Link>
+            <Link to="/faq" className="hover:text-zinc-200">
+              FAQ
             </Link>
           </div>
         </nav>

@@ -39,7 +39,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     lockedMap[p.categoryKey] = p.lockedAt !== null;
   }
 
-  return json({ user, pickMap, betMap, lockedMap, categories: BALLOT_CATEGORIES });
+  return json({
+    user,
+    pickMap,
+    betMap,
+    lockedMap,
+    categories: BALLOT_CATEGORIES,
+  });
 }
 
 type ActionData = { ok: true } | { ok: false; message: string } | undefined;
@@ -171,7 +177,10 @@ export async function action({ request }: ActionFunctionArgs) {
     // Check if pick is locked
     const pick = await prisma.pick.findUnique({
       where: {
-        userId_categoryKey: { userId: user.id, categoryKey: String(categoryKey) },
+        userId_categoryKey: {
+          userId: user.id,
+          categoryKey: String(categoryKey),
+        },
       },
       select: { lockedAt: true },
     });
@@ -185,7 +194,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
     await prisma.pick.upsert({
       where: {
-        userId_categoryKey: { userId: user.id, categoryKey: String(categoryKey) },
+        userId_categoryKey: {
+          userId: user.id,
+          categoryKey: String(categoryKey),
+        },
       },
       create: {
         userId: user.id,
@@ -211,7 +223,8 @@ export default function Ballot() {
   // Bet amounts for each category
   const [betAmounts, setBetAmounts] = useState<Record<string, number>>(betMap);
   // Locked state for each category
-  const [lockedPicks, setLockedPicks] = useState<Record<string, boolean>>(lockedMap);
+  const [lockedPicks, setLockedPicks] =
+    useState<Record<string, boolean>>(lockedMap);
   // Confirmation modal state
   const [showLockAllModal, setShowLockAllModal] = useState(false);
 
@@ -347,8 +360,10 @@ export default function Ballot() {
           (n) => formatNominee(n) === selectedNominee
         );
         const odds = nominee?.odds || null;
-        const profit = odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
-        const totalReturn = odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0;
+        const profit =
+          odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
+        const totalReturn =
+          odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0;
 
         return {
           categoryKey: category.key,
@@ -395,7 +410,12 @@ export default function Ballot() {
                 <div className="h-2 w-2 rounded-full bg-green-500"></div>
                 <span className="text-xs text-zinc-400">{user.email}</span>
               </div>
-              {/* Logout could go here */}
+              <Link
+                to="/logout"
+                className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
+              >
+                Logout
+              </Link>
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
@@ -407,6 +427,9 @@ export default function Ballot() {
             </Link>
             <Link to="/portfolio" className="hover:text-zinc-200">
               Portfolio
+            </Link>
+            <Link to="/faq" className="hover:text-zinc-200">
+              FAQ
             </Link>
           </div>
         </nav>
@@ -487,7 +510,10 @@ export default function Ballot() {
                               ? "bg-gold-500/20 text-gold-400 font-semibold border border-gold-500/40"
                               : "bg-white/10 text-green-400 font-semibold"
                             : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                        } ${(locked || isLocked) && "cursor-not-allowed opacity-60"}`}
+                        } ${
+                          (locked || isLocked) &&
+                          "cursor-not-allowed opacity-60"
+                        }`}
                       >
                         <span className="flex items-center gap-2">
                           <span>{nomineeStr}</span>
@@ -542,7 +568,9 @@ export default function Ballot() {
                                 onChange={(e) =>
                                   handleBetAmountChange(c.key, e.target.value)
                                 }
-                                onBlur={() => handleBetAmountBlur(c.key, nomineeStr)}
+                                onBlur={() =>
+                                  handleBetAmountBlur(c.key, nomineeStr)
+                                }
                                 disabled={locked || isLocked}
                                 placeholder="0.00"
                                 className="w-full pl-5 pr-2 py-1 bg-black border border-zinc-700 rounded text-[10px] md:text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-gold-500 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -641,28 +669,29 @@ export default function Ballot() {
           )}
 
           {/* Clear Unlocked Picks Button */}
-          {!locked && Object.keys(localPicks).some(key => !lockedPicks[key]) && (
-            <div className="flex justify-center">
-              <Form method="post">
-                <input type="hidden" name="intent" value="clearUnlocked" />
-                <button
-                  type="submit"
-                  onClick={(e) => {
-                    if (
-                      !confirm(
-                        "Are you sure you want to clear all unlocked selections? This cannot be undone."
-                      )
-                    ) {
-                      e.preventDefault();
-                    }
-                  }}
-                  className="rounded-full bg-zinc-800 px-8 py-3 font-medium text-zinc-300 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 transition-all"
-                >
-                  Clear Unlocked Picks
-                </button>
-              </Form>
-            </div>
-          )}
+          {!locked &&
+            Object.keys(localPicks).some((key) => !lockedPicks[key]) && (
+              <div className="flex justify-center">
+                <Form method="post">
+                  <input type="hidden" name="intent" value="clearUnlocked" />
+                  <button
+                    type="submit"
+                    onClick={(e) => {
+                      if (
+                        !confirm(
+                          "Are you sure you want to clear all unlocked selections? This cannot be undone."
+                        )
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                    className="rounded-full bg-zinc-800 px-8 py-3 font-medium text-zinc-300 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 transition-all"
+                  >
+                    Clear Unlocked Picks
+                  </button>
+                </Form>
+              </div>
+            )}
         </div>
       </main>
 
@@ -674,7 +703,8 @@ export default function Ballot() {
               Confirm Lock All Picks
             </h2>
             <p className="text-zinc-300 text-sm mb-6">
-              You are about to lock the following picks. Once locked, you won't be able to change them unless you unlock them first.
+              You are about to lock the following picks. Once locked, you won't
+              be able to change them unless you unlock them first.
             </p>
 
             {/* Summary Table */}
@@ -708,8 +738,12 @@ export default function Ballot() {
                       key={pick.categoryKey}
                       className="border-b border-white/10"
                     >
-                      <td className="p-3 text-zinc-300">{pick.categoryTitle}</td>
-                      <td className="p-3 text-white font-medium">{pick.nominee}</td>
+                      <td className="p-3 text-zinc-300">
+                        {pick.categoryTitle}
+                      </td>
+                      <td className="p-3 text-white font-medium">
+                        {pick.nominee}
+                      </td>
                       <td className="p-3 text-center text-gold-400 font-mono">
                         {pick.odds ? formatOdds(pick.odds) : "—"}
                       </td>
@@ -733,17 +767,20 @@ export default function Ballot() {
                       Totals
                     </td>
                     <td className="p-3 text-right font-bold text-white font-mono">
-                      ${getPicksToLock()
+                      $
+                      {getPicksToLock()
                         .reduce((sum, pick) => sum + pick.betAmount, 0)
                         .toFixed(2)}
                     </td>
                     <td className="p-3 text-right font-bold text-gold-400 font-mono">
-                      ${getPicksToLock()
+                      $
+                      {getPicksToLock()
                         .reduce((sum, pick) => sum + pick.profit, 0)
                         .toFixed(2)}
                     </td>
                     <td className="p-3 text-right font-bold text-green-400 font-mono">
-                      ${getPicksToLock()
+                      $
+                      {getPicksToLock()
                         .reduce((sum, pick) => sum + pick.totalReturn, 0)
                         .toFixed(2)}
                     </td>
