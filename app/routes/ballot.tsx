@@ -15,28 +15,32 @@ import {
   calculateTotalReturn,
 } from "../lib/betting-utils";
 import { prisma } from "../utils/db.server";
-import { requireUser } from "../utils/auth.server";
+import { getUser } from "../utils/auth.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
-  const picks = await prisma.pick.findMany({
-    where: { userId: user.id },
-    select: {
-      categoryKey: true,
-      nominee: true,
-      betAmount: true,
-      lockedAt: true,
-    },
-  });
+  const user = await getUser(request);
 
-  const pickMap: Record<string, string> = {};
-  const betMap: Record<string, number> = {};
-  const lockedMap: Record<string, boolean> = {};
+  let pickMap: Record<string, string> = {};
+  let betMap: Record<string, number> = {};
+  let lockedMap: Record<string, boolean> = {};
 
-  for (const p of picks) {
-    pickMap[p.categoryKey] = p.nominee;
-    betMap[p.categoryKey] = parseFloat(p.betAmount.toString());
-    lockedMap[p.categoryKey] = p.lockedAt !== null;
+  // Only fetch picks if user is logged in
+  if (user) {
+    const picks = await prisma.pick.findMany({
+      where: { userId: user.id },
+      select: {
+        categoryKey: true,
+        nominee: true,
+        betAmount: true,
+        lockedAt: true,
+      },
+    });
+
+    for (const p of picks) {
+      pickMap[p.categoryKey] = p.nominee;
+      betMap[p.categoryKey] = parseFloat(p.betAmount.toString());
+      lockedMap[p.categoryKey] = p.lockedAt !== null;
+    }
   }
 
   return json({
@@ -51,7 +55,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 type ActionData = { ok: true } | { ok: false; message: string } | undefined;
 
 export async function action({ request }: ActionFunctionArgs) {
-  const user = await requireUser(request);
+  const user = await getUser(request);
+
+  // Require authentication for all actions
+  if (!user) {
+    const url = new URL(request.url);
+    return redirect(`/join?redirectTo=${url.pathname}`);
+  }
+
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "save");
 
@@ -215,7 +226,7 @@ export default function Ballot() {
   const { user, pickMap, betMap, lockedMap, categories } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
-  const locked = Boolean(user.lockedAt);
+  const locked = Boolean(user?.lockedAt);
   const submit = useSubmit();
 
   // Optimistic UI for picks
@@ -228,12 +239,74 @@ export default function Ballot() {
   // Confirmation modal state
   const [showLockAllModal, setShowLockAllModal] = useState(false);
 
-  // Sync with server data
+  // Load from localStorage if not logged in
   useEffect(() => {
-    setLocalPicks(pickMap);
-    setBetAmounts(betMap);
-    setLockedPicks(lockedMap);
-  }, [pickMap, betMap, lockedMap]);
+    if (!user && typeof window !== "undefined") {
+      const savedPicks = localStorage.getItem("guestPicks");
+      const savedBets = localStorage.getItem("guestBets");
+      if (savedPicks) {
+        try {
+          setLocalPicks(JSON.parse(savedPicks));
+        } catch (e) {
+          console.error("Failed to parse guest picks", e);
+        }
+      }
+      if (savedBets) {
+        try {
+          setBetAmounts(JSON.parse(savedBets));
+        } catch (e) {
+          console.error("Failed to parse guest bets", e);
+        }
+      }
+    }
+  }, [user]);
+
+  // Sync with server data when logged in
+  useEffect(() => {
+    if (user) {
+      // Check if there are guest picks to save
+      if (typeof window !== "undefined") {
+        const savedPicks = localStorage.getItem("guestPicks");
+        const savedBets = localStorage.getItem("guestBets");
+
+        if (savedPicks || savedBets) {
+          // Parse guest data
+          const guestPicks = savedPicks ? JSON.parse(savedPicks) : {};
+          const guestBets = savedBets ? JSON.parse(savedBets) : {};
+
+          // Save each pick to server
+          Object.keys(guestPicks).forEach((categoryKey) => {
+            const nominee = guestPicks[categoryKey];
+            const betAmount = guestBets[categoryKey] || 0;
+
+            const formData = new FormData();
+            formData.append("intent", "save");
+            formData.append("categoryKey", categoryKey);
+            formData.append("nominee", nominee);
+            submit(formData, { method: "post", replace: true });
+
+            // Also save bet amount if present
+            if (betAmount > 0) {
+              const betFormData = new FormData();
+              betFormData.append("intent", "saveBetAmount");
+              betFormData.append("categoryKey", categoryKey);
+              betFormData.append("nominee", nominee);
+              betFormData.append("betAmount", String(betAmount));
+              submit(betFormData, { method: "post", replace: true });
+            }
+          });
+
+          // Clear guest data after saving
+          localStorage.removeItem("guestPicks");
+          localStorage.removeItem("guestBets");
+        }
+      }
+
+      setLocalPicks(pickMap);
+      setBetAmounts(betMap);
+      setLockedPicks(lockedMap);
+    }
+  }, [user, pickMap, betMap, lockedMap, submit]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -252,9 +325,16 @@ export default function Ballot() {
     if (lockedPicks[categoryKey]) return;
     if (locked) return; // Global ballot lock
 
-    setLocalPicks((prev) => ({ ...prev, [categoryKey]: nominee }));
+    const newPicks = { ...localPicks, [categoryKey]: nominee };
+    setLocalPicks(newPicks);
 
-    // Auto-save on selection
+    // If not logged in, save to localStorage
+    if (!user && typeof window !== "undefined") {
+      localStorage.setItem("guestPicks", JSON.stringify(newPicks));
+      return;
+    }
+
+    // If logged in, auto-save to server
     const formData = new FormData();
     formData.append("intent", "save");
     formData.append("categoryKey", categoryKey);
@@ -268,7 +348,15 @@ export default function Ballot() {
   };
 
   const handleBetAmountBlur = (categoryKey: string, nominee: string) => {
-    // Save bet amount to database when input loses focus
+    const newBets = { ...betAmounts, [categoryKey]: betAmounts[categoryKey] || 0 };
+
+    // If not logged in, save to localStorage
+    if (!user && typeof window !== "undefined") {
+      localStorage.setItem("guestBets", JSON.stringify(newBets));
+      return;
+    }
+
+    // If logged in, save bet amount to database when input loses focus
     const formData = new FormData();
     formData.append("intent", "saveBetAmount");
     formData.append("categoryKey", categoryKey);
@@ -278,6 +366,12 @@ export default function Ballot() {
   };
 
   const handleLockPick = (categoryKey: string) => {
+    // If not logged in, redirect to sign up
+    if (!user) {
+      window.location.href = "/join?redirectTo=/ballot";
+      return;
+    }
+
     const formData = new FormData();
     formData.append("intent", "lockPick");
     formData.append("categoryKey", categoryKey);
@@ -378,6 +472,12 @@ export default function Ballot() {
   };
 
   const handleLockAll = () => {
+    // If not logged in, redirect to sign up
+    if (!user) {
+      window.location.href = "/join?redirectTo=/ballot";
+      return;
+    }
+
     const formData = new FormData();
     formData.append("intent", "lockAll");
     submit(formData, { method: "post" });
@@ -406,16 +506,36 @@ export default function Ballot() {
               </span>
             </div>
             <div className="flex-1 flex justify-end gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span className="text-xs text-zinc-400">{user.email}</span>
-              </div>
-              <Link
-                to="/logout"
-                className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
-              >
-                Logout
-              </Link>
+              {!user && (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/join"
+                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
+              {user && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                    <span className="text-xs text-zinc-400">{user.email}</span>
+                  </div>
+                  <Link
+                    to="/logout"
+                    className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
+                  >
+                    Logout
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
@@ -620,7 +740,7 @@ export default function Ballot() {
                                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                   />
                                 </svg>
-                                Lock This Pick
+                                {user ? "Lock This Pick" : "Sign Up to Lock"}
                               </button>
                             </div>
                           )}
@@ -660,10 +780,10 @@ export default function Ballot() {
           {!locked && getPicksToLock().length > 0 && (
             <div className="flex justify-center">
               <button
-                onClick={() => setShowLockAllModal(true)}
+                onClick={() => user ? setShowLockAllModal(true) : (window.location.href = "/join?redirectTo=/ballot")}
                 className="rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)] transition-all"
               >
-                Lock All Picks
+                {user ? "Lock All Picks" : "Sign Up to Lock Picks"}
               </button>
             </div>
           )}

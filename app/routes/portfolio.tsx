@@ -8,61 +8,67 @@ import {
   calculateTotalReturn,
 } from "../lib/betting-utils";
 import { prisma } from "../utils/db.server";
-import { requireUser } from "../utils/auth.server";
+import { getUser } from "../utils/auth.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+  const user = await getUser(request);
 
-  // Fetch all locked picks for the user
-  const lockedPicks = await prisma.pick.findMany({
-    where: {
-      userId: user.id,
-      lockedAt: { not: null },
-    },
-    select: {
-      id: true,
-      categoryKey: true,
-      nominee: true,
-      betAmount: true,
-      lockedAt: true,
-    },
-    orderBy: { lockedAt: "asc" },
-  });
+  let enrichedPicks: any[] = [];
+  let totals = { betAmount: 0, potentialProfit: 0, totalReturn: 0 };
 
-  // Enrich picks with category info and odds
-  const enrichedPicks = lockedPicks.map((pick) => {
-    const category = BALLOT_CATEGORIES.find((c) => c.key === pick.categoryKey);
-    const nominee = category?.nominees.find(
-      (n) => formatNominee(n) === pick.nominee
+  // Only fetch picks if user is logged in
+  if (user) {
+    // Fetch all locked picks for the user
+    const lockedPicks = await prisma.pick.findMany({
+      where: {
+        userId: user.id,
+        lockedAt: { not: null },
+      },
+      select: {
+        id: true,
+        categoryKey: true,
+        nominee: true,
+        betAmount: true,
+        lockedAt: true,
+      },
+      orderBy: { lockedAt: "asc" },
+    });
+
+    // Enrich picks with category info and odds
+    enrichedPicks = lockedPicks.map((pick) => {
+      const category = BALLOT_CATEGORIES.find((c) => c.key === pick.categoryKey);
+      const nominee = category?.nominees.find(
+        (n) => formatNominee(n) === pick.nominee
+      );
+
+      const odds = nominee?.odds || null;
+      const betAmount = parseFloat(pick.betAmount.toString());
+
+      return {
+        id: pick.id,
+        categoryKey: pick.categoryKey,
+        categoryTitle: category?.title || pick.categoryKey,
+        nominee: pick.nominee,
+        odds,
+        betAmount,
+        potentialProfit:
+          odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0,
+        totalReturn:
+          odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0,
+        lockedAt: pick.lockedAt,
+      };
+    });
+
+    // Calculate totals
+    totals = enrichedPicks.reduce(
+      (acc, pick) => ({
+        betAmount: acc.betAmount + pick.betAmount,
+        potentialProfit: acc.potentialProfit + pick.potentialProfit,
+        totalReturn: acc.totalReturn + pick.totalReturn,
+      }),
+      { betAmount: 0, potentialProfit: 0, totalReturn: 0 }
     );
-
-    const odds = nominee?.odds || null;
-    const betAmount = parseFloat(pick.betAmount.toString());
-
-    return {
-      id: pick.id,
-      categoryKey: pick.categoryKey,
-      categoryTitle: category?.title || pick.categoryKey,
-      nominee: pick.nominee,
-      odds,
-      betAmount,
-      potentialProfit:
-        odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0,
-      totalReturn:
-        odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0,
-      lockedAt: pick.lockedAt,
-    };
-  });
-
-  // Calculate totals
-  const totals = enrichedPicks.reduce(
-    (acc, pick) => ({
-      betAmount: acc.betAmount + pick.betAmount,
-      potentialProfit: acc.potentialProfit + pick.potentialProfit,
-      totalReturn: acc.totalReturn + pick.totalReturn,
-    }),
-    { betAmount: 0, potentialProfit: 0, totalReturn: 0 }
-  );
+  }
 
   return json({ user, lockedPicks: enrichedPicks, totals });
 }
@@ -92,16 +98,36 @@ export default function Portfolio() {
               </span>
             </div>
             <div className="flex-1 flex justify-end gap-4 items-center">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span className="text-xs text-zinc-400">{user.email}</span>
-              </div>
-              <Link
-                to="/logout"
-                className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
-              >
-                Logout
-              </Link>
+              {!user && (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/join"
+                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
+              {user && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                    <span className="text-xs text-zinc-400">{user.email}</span>
+                  </div>
+                  <Link
+                    to="/logout"
+                    className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
+                  >
+                    Logout
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
@@ -158,13 +184,13 @@ export default function Portfolio() {
         {lockedPicks.length === 0 ? (
           <div className="max-w-3xl mx-auto text-center py-12">
             <p className="text-zinc-400 text-lg mb-6">
-              You haven't locked any picks yet.
+              {user ? "You haven't locked any picks yet." : "Sign up to lock your picks and build your portfolio!"}
             </p>
             <Link
-              to="/ballot"
+              to={user ? "/ballot" : "/join"}
               className="inline-block rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)] transition-all"
             >
-              Make Your Picks
+              {user ? "Make Your Picks" : "Sign Up to Get Started"}
             </Link>
           </div>
         ) : (

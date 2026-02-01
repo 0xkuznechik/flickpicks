@@ -33,6 +33,22 @@ export default function FAQ() {
               </span>
             </div>
             <div className="flex-1 flex justify-end gap-4 items-center">
+              {!user && (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/join"
+                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
+                  >
+                    Sign Up
+                  </Link>
+                </>
+              )}
               {user && (
                 <>
                   <div className="flex items-center gap-2">
