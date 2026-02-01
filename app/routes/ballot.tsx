@@ -333,17 +333,14 @@ export default function Ballot() {
           ))}
         </div>
 
-        {/* Floating Lock Button (if not locked) */}
+        {/* Lock Ballot Button */}
         {!locked && (
-          <div className="sticky bottom-6 flex justify-center">
-            <Form
-              method="post"
-              className="bg-black/80 backdrop-blur p-2 rounded-full border border-white/10 shadow-xl"
-            >
+          <div className="max-w-3xl mx-auto mt-8 flex justify-center">
+            <Form method="post">
               <input type="hidden" name="intent" value="lock" />
               <button
                 type="submit"
-                className="rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-glow hover:bg-gold-500"
+                className="rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)] transition-all"
                 onClick={(e) => {
                   if (
                     !confirm(
