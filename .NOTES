@@ -19,6 +19,10 @@ TODO
   - allowlist of specific emails; preset the passwords
 	- update db logic and storage so they're all hashed; no access to passwds for
 	  admin
+  - **IMPORTANT: Email Confirmation Setup**
+    - Add `RESEND_API_KEY` and `FROM_EMAIL` to your `.env` file for email sending to work.
+    - Update `ALLOWED_EMAILS` in `app/routes/join.tsx` with your actual allowed email addresses.
+    - Ensure Cloudflare is configured to correctly forward requests to your Remix app for the confirmation links to work.
 
 NOTES
 

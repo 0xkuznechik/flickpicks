@@ -8,14 +8,16 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  username      String?  @unique
-  email         String   @unique
-  recoveryEmail String?
-  passwordHash  String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  lockedAt      DateTime?
+  id                    String    @id @default(cuid())
+  username              String?   @unique
+  email                 String    @unique
+  recoveryEmail         String?
+  passwordHash          String
+  passwordMustBeChanged Boolean   @default(false)
+  isAdmin               Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  lockedAt              DateTime?
 
   picks  Pick[]
   caches ExternalCache[]
@@ -46,3 +48,4 @@ model ExternalCache {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
+

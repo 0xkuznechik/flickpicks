@@ -4,7 +4,11 @@ export default {
   content: ["./app/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+      },
       colors: {
+        'gold-h1': '#FFDA71',
         ink: {
           950: "#05050b",
           900: "#0b0b14",

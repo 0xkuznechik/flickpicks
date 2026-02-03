@@ -28,10 +28,10 @@ export default function Leaderboard() {
             <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">
               Status
             </div>
-            <h1 className="font-[var(--font-inter)] text-5xl text-zinc-100">
+            <h1 className="h1">
               Leaderboard
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+            <p className="h3 mt-2 max-w-2xl">
               Picks submitted and lock status. Add scoring once winners are
               known.
             </p>
@@ -65,9 +65,9 @@ export default function Leaderboard() {
               <tbody className="divide-y divide-white/10">
                 {users.map((u) => (
                   <tr key={u.id} className="text-zinc-200">
-                    <td className="px-4 py-3">{u.email}</td>
-                    <td className="px-4 py-3">{u._count.picks}</td>
-                    <td className="px-4 py-3 text-zinc-400">
+                    <td className="h3 px-4 py-3">{u.email}</td>
+                    <td className="h3 px-4 py-3">{u._count.picks}</td>
+                    <td className="h3 px-4 py-3 text-zinc-400">
                       {u.lockedAt ? new Date(u.lockedAt).toLocaleString() : "—"}
                     </td>
                   </tr>

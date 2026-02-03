@@ -89,6 +89,14 @@ async function main() {
   await run("npx", ["prisma", "migrate", "deploy"]);
 
   // Remix dev server
+  console.log("Checking for processes on port 5173 before starting dev server...");
+  try {
+    await run("lsof", ["-ti:5173"]);
+  } catch (e) {
+    // lsof exits with 1 if no process is found
+    console.log("No process found on port 5173. Starting dev server...");
+  }
+
   const dev = spawn(
     "npx",
     ["remix", "vite:dev", "--host", "0.0.0.0", "--port", "5173"],

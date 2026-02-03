@@ -100,20 +100,15 @@ export default function Index() {
         <nav className="border-b border-white/10 bg-black py-4">
           <div className="container-pad flex items-center justify-between">
             <div className="flex-1"></div> {/* Spacer to center logo */}
-            <div className="flex items-center gap-3">
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                FLICK
-              </span>
+            <h1 className="h1 flex items-center gap-3">
+              <span className="tracking-widest">FLICK</span>
               <img
                 src="/images/oscarspoollogo.png"
                 alt="Logo"
                 className="h-10 w-auto"
-              />{" "}
-              {/* Assuming generic logo or statuette */}
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                PICKS
-              </span>
-            </div>
+              />
+              <span className="tracking-widest">PICKS</span>
+            </h1>
             <div className="flex-1 flex justify-end gap-4">
               {!user && (
                 <>
@@ -147,17 +142,17 @@ export default function Index() {
               )}
             </div>
           </div>
-          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
-            <Link to="/" className="text-gold-400 hover:text-gold-300">
+          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3">
+            <Link to="/" className="h2 text-gold-h1 hover:text-gold-300">
               Home
             </Link>
-            <Link to="/ballot" className="hover:text-zinc-200">
+            <Link to="/ballot" className="h2 text-gold-h1 hover:text-zinc-200">
               Make Selections
             </Link>
-            <Link to="/portfolio" className="hover:text-zinc-200">
+            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-zinc-200">
               Portfolio
             </Link>
-            <Link to="/faq" className="hover:text-zinc-200">
+            <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
               FAQ
             </Link>
           </div>
@@ -165,6 +160,35 @@ export default function Index() {
       </div>
 
       <main className="container-pad space-y-20 py-12">
+        {/* Key Event Dates */}
+        <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8">
+          <h2 className="h2 mb-8 text-center">
+            Key Event Dates
+          </h2>
+          <div className="mx-auto max-w-4xl space-y-3">
+            {keyDates.map((item, idx) => (
+              <div key={idx} className="flex gap-4 text-sm">
+                <span
+                  className={`w-28 flex-shrink-0 font-bold ${
+                    item.color || "text-gold-400"
+                  }`}
+                >
+                  {item.date} —
+                </span>
+                <span
+                  className={
+                    item.highlight
+                      ? "h3"
+                      : "text-zinc-400"
+                  }
+                >
+                  {item.event}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Top 10 Most Nominated Movies */}
         <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8 relative">
           {/* Left Arrow */}
@@ -209,7 +233,7 @@ export default function Index() {
             </svg>
           </button>
 
-          <h2 className="text-center font-[var(--font-inter)] text-3xl font-bold text-white mb-8">
+          <h2 className="h2 text-center mb-8">
             Top 10 Most Nominated Movies
           </h2>
 
@@ -238,7 +262,7 @@ export default function Index() {
                     )}
                   </div>
                   <div className="flex flex-col gap-1 text-left">
-                    <div className="text-xs font-bold uppercase tracking-wider text-zinc-200">
+                    <div className="h3">
                       {movie.movieName}
                     </div>
                     <div className="text-[10px] text-gold-400">
@@ -248,35 +272,6 @@ export default function Index() {
                 </button>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* Key Event Dates */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8">
-          <h2 className="mb-8 text-center font-[var(--font-inter)] text-3xl font-bold text-white">
-            Key Event Dates
-          </h2>
-          <div className="mx-auto max-w-4xl space-y-3">
-            {keyDates.map((item, idx) => (
-              <div key={idx} className="flex gap-4 text-sm">
-                <span
-                  className={`w-28 flex-shrink-0 font-bold ${
-                    item.color || "text-gold-400"
-                  }`}
-                >
-                  {item.date} —
-                </span>
-                <span
-                  className={
-                    item.highlight
-                      ? "font-semibold text-white"
-                      : "text-zinc-400"
-                  }
-                >
-                  {item.event}
-                </span>
-              </div>
-            ))}
           </div>
         </section>
       </main>

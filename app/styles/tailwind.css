@@ -15,6 +15,7 @@ html, body {
 
 body {
   @apply bg-ink-950 text-zinc-100;
+  font-family: var(--font-inter);
 }
 
 a {
@@ -56,4 +57,16 @@ a {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@layer components {
+  .h1 {
+    @apply font-sans text-4xl text-gold-h1;
+  }
+  .h2 {
+    @apply font-sans text-2xl text-white;
+  }
+  .h3 {
+    @apply font-sans text-xl text-white;
+  }
 }

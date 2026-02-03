@@ -26,27 +26,43 @@ export async function requireUser(request: Request) {
   return user;
 }
 
-export async function loginOrRegister(email: string, password: string) {
+export async function login(
+  email: string,
+  password: string
+): Promise<{
+  user: { id: string; email: string; passwordMustBeChanged: boolean } | null;
+  error?: string;
+}> {
   const normalized = email.trim().toLowerCase();
-  const existing = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: { email: normalized },
   });
 
-  if (!existing) {
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
-      data: { email: normalized, passwordHash },
-      select: { id: true, email: true },
+  if (!existingUser) {
+    // Check if the user is pending confirmation
+    const pendingUser = await prisma.pendingUser.findUnique({
+      where: { email: normalized },
     });
-    return { user, created: true };
+    if (pendingUser) {
+      return { user: null, error: "unconfirmed" };
+    }
+    return { user: null };
   }
 
-  const ok = await bcrypt.compare(password, existing.passwordHash);
-  if (!ok) return { user: null, created: false };
+  const isPasswordValid = await bcrypt.compare(
+    password,
+    existingUser.passwordHash
+  );
+  if (!isPasswordValid) {
+    return { user: null };
+  }
 
   return {
-    user: { id: existing.id, email: existing.email },
-    created: false,
+    user: {
+      id: existingUser.id,
+      email: existingUser.email,
+      passwordMustBeChanged: existingUser.passwordMustBeChanged,
+    },
   };
 }
 

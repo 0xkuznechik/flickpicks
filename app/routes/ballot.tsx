@@ -495,19 +495,15 @@ export default function Ballot() {
         <nav className="border-b border-white/10 bg-black py-4">
           <div className="container-pad flex items-center justify-between">
             <div className="flex-1"></div>
-            <div className="flex items-center gap-3">
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                FLICK
-              </span>
+            <h1 className="h1 flex items-center gap-3">
+              <span className="tracking-widest">FLICK</span>
               <img
                 src="/images/oscarspoollogo.png"
                 alt="Logo"
                 className="h-10 w-auto"
               />
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                PICKS
-              </span>
-            </div>
+              <span className="tracking-widest">PICKS</span>
+            </h1>
             <div className="flex-1 flex justify-end gap-4 items-center">
               {!user && (
                 <>
@@ -541,17 +537,17 @@ export default function Ballot() {
               )}
             </div>
           </div>
-          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
-            <Link to="/" className="hover:text-zinc-200">
+          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3">
+            <Link to="/" className="h2 text-gold-h1 hover:text-zinc-200">
               Home
             </Link>
-            <Link to="/ballot" className="text-gold-400 hover:text-gold-300">
+            <Link to="/ballot" className="h2 text-gold-h1 hover:text-gold-300">
               Make Selections
             </Link>
-            <Link to="/portfolio" className="hover:text-zinc-200">
+            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-zinc-200">
               Portfolio
             </Link>
-            <Link to="/faq" className="hover:text-zinc-200">
+            <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
               FAQ
             </Link>
           </div>
@@ -603,7 +599,7 @@ export default function Ballot() {
               className="rounded-lg border border-gold-500/30 bg-black p-1"
             >
               <div className="text-center py-2 border-b border-white/10 bg-zinc-900/40 rounded-t">
-                <h3 className="font-[var(--font-inter)] text-xl text-zinc-100">
+                <h3 className="h2">
                   {c.title}
                 </h3>
               </div>
