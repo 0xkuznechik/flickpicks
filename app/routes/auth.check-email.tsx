@@ -16,10 +16,7 @@ export default function CheckEmailPage() {
             </p>
             <p className="small-muted mt-6">
               Didn't receive an email? Check your spam folder or{" "}
-              <Link
-                to="/join"
-                className="text-gold-400 hover:text-gold-500"
-              >
+              <Link to="/join" className="text-gold-400 hover:text-gold-500">
                 try signing up again
               </Link>
               .

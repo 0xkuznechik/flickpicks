@@ -41,15 +41,21 @@ export default function AdminUsers() {
     <div>
       <h2 className="text-xl font-semibold mb-2">Users</h2>
       {fetcher.data?.temporaryPassword && (
-        <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
-          New temporary password: <strong>{fetcher.data.temporaryPassword}</strong>
+        <div
+          className="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg"
+          role="alert"
+        >
+          New temporary password:{" "}
+          <strong>{fetcher.data.temporaryPassword}</strong>
         </div>
       )}
       <ul className="divide-y divide-zinc-700">
         {users.map((user) => (
           <li key={user.id} className="py-2 flex justify-between items-center">
             <div>
-              <p className="font-semibold">{user.username} ({user.email})</p>
+              <p className="font-semibold">
+                {user.username} ({user.email})
+              </p>
               {user.isAdmin && <p className="text-sm text-gold-400">Admin</p>}
             </div>
             <fetcher.Form method="post">

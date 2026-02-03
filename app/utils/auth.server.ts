@@ -39,13 +39,6 @@ export async function login(
   });
 
   if (!existingUser) {
-    // Check if the user is pending confirmation
-    const pendingUser = await prisma.pendingUser.findUnique({
-      where: { email: normalized },
-    });
-    if (pendingUser) {
-      return { user: null, error: "unconfirmed" };
-    }
     return { user: null };
   }
 

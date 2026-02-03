@@ -538,13 +538,22 @@ export default function Ballot() {
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-4 border-t border-white/10 py-3">
-            <Link to="/" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
+            <Link
+              to="/"
+              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
+            >
               Home
             </Link>
-            <Link to="/ballot" className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4">
+            <Link
+              to="/ballot"
+              className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4"
+            >
               Make Selections
             </Link>
-            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
+            <Link
+              to="/portfolio"
+              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
+            >
               Portfolio
             </Link>
             <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
@@ -599,9 +608,7 @@ export default function Ballot() {
               className="rounded-lg border border-gold-500/30 bg-black p-1"
             >
               <div className="text-center py-2 border-b border-white/10 bg-zinc-900/40 rounded-t">
-                <h3 className="h2">
-                  {c.title}
-                </h3>
+                <h3 className="h2">{c.title}</h3>
               </div>
               <div className="p-3 space-y-3">
                 {c.nominees.map((nominee) => {

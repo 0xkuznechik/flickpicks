@@ -129,13 +129,22 @@ export default function Portfolio() {
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-4 border-t border-white/10 py-3">
-            <Link to="/" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
+            <Link
+              to="/"
+              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
+            >
               Home
             </Link>
-            <Link to="/ballot" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
+            <Link
+              to="/ballot"
+              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
+            >
               Make Selections
             </Link>
-            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4">
+            <Link
+              to="/portfolio"
+              className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4"
+            >
               Portfolio
             </Link>
             <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
@@ -146,30 +155,20 @@ export default function Portfolio() {
 
         {/* Header Stats */}
         <div className="text-center space-y-6 py-6 border-b border-white/10 bg-black">
-          <h1 className="h1">
-            MY PORTFOLIO
-          </h1>
+          <h1 className="h1">MY PORTFOLIO</h1>
           <div className="flex justify-center gap-0 md:justify-center border border-gold-400/40 rounded-lg overflow-hidden max-w-4xl mx-auto divide-x divide-gold-400/40">
             <div className="flex-1 bg-black p-3 text-center">
-              <div className="h2">
-                Total Bet Amount
-              </div>
-              <div className="h3">
-                ${totals.betAmount.toFixed(2)}
-              </div>
+              <div className="h2">Total Bet Amount</div>
+              <div className="h3">${totals.betAmount.toFixed(2)}</div>
             </div>
             <div className="flex-1 bg-black p-3 text-center">
-              <div className="h2">
-                Potential Profit
-              </div>
+              <div className="h2">Potential Profit</div>
               <div className="h3 text-gold-400">
                 ${totals.potentialProfit.toFixed(2)}
               </div>
             </div>
             <div className="flex-1 bg-black p-3 text-center">
-              <div className="h2">
-                Total Return
-              </div>
+              <div className="h2">Total Return</div>
               <div className="h3 text-green-400">
                 ${totals.totalReturn.toFixed(2)}
               </div>

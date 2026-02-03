@@ -17,8 +17,11 @@ const Schema = z
   });
 
 type ActionData =
-  | { ok: false; fieldErrors: { password?: string[], confirmPassword?: string[] } }
-  | { ok: false; formError: string };
+  | {
+      ok: false;
+      fieldErrors: { password?: string[]; confirmPassword?: string[] };
+    }
+  | undefined;
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -115,12 +118,6 @@ export default function ForcePasswordChange() {
                 </p>
               ) : null}
             </div>
-
-            {actionData && "formError" in actionData && actionData.formError ? (
-              <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">
-                {actionData.formError}
-              </p>
-            ) : null}
 
             <button type="submit" className="btn btn-primary w-full">
               Set New Password

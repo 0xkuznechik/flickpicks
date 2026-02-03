@@ -143,13 +143,22 @@ export default function Index() {
             </div>
           </div>
           <div className="mt-4 flex justify-center gap-4 border-t border-white/10 py-3">
-            <Link to="/" className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4">
+            <Link
+              to="/"
+              className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4"
+            >
               Home
             </Link>
-            <Link to="/ballot" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
+            <Link
+              to="/ballot"
+              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
+            >
               Make Selections
             </Link>
-            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
+            <Link
+              to="/portfolio"
+              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
+            >
               Portfolio
             </Link>
             <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
@@ -162,9 +171,7 @@ export default function Index() {
       <main className="container-pad space-y-20 py-12">
         {/* Key Event Dates */}
         <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8">
-          <h2 className="h2 mb-8 text-center">
-            Key Event Dates
-          </h2>
+          <h2 className="h2 mb-8 text-center">Key Event Dates</h2>
           <div className="mx-auto max-w-4xl space-y-3">
             {keyDates.map((item, idx) => (
               <div key={idx} className="flex gap-4 text-sm">
@@ -175,13 +182,7 @@ export default function Index() {
                 >
                   {item.date} —
                 </span>
-                <span
-                  className={
-                    item.highlight
-                      ? "h3"
-                      : "text-zinc-400"
-                  }
-                >
+                <span className={item.highlight ? "h3" : "text-zinc-400"}>
                   {item.event}
                 </span>
               </div>
@@ -233,9 +234,7 @@ export default function Index() {
             </svg>
           </button>
 
-          <h2 className="h2 text-center mb-8">
-            Top 10 Most Nominated Movies
-          </h2>
+          <h2 className="h2 text-center mb-8">Top 10 Most Nominated Movies</h2>
 
           <div className="relative">
             <div
@@ -262,9 +261,7 @@ export default function Index() {
                     )}
                   </div>
                   <div className="flex flex-col gap-1 text-left">
-                    <div className="h3">
-                      {movie.movieName}
-                    </div>
+                    <div className="h3">{movie.movieName}</div>
                     <div className="text-[10px] text-gold-400">
                       {movie.nominationCount} nominations
                     </div>

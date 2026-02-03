@@ -28,9 +28,7 @@ export default function Leaderboard() {
             <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">
               Status
             </div>
-            <h1 className="h1">
-              Leaderboard
-            </h1>
+            <h1 className="h1">Leaderboard</h1>
             <p className="h3 mt-2 max-w-2xl">
               Picks submitted and lock status. Add scoring once winners are
               known.
