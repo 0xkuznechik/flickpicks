@@ -8,7 +8,7 @@ export default {
         sans: ["Inter", "sans-serif"],
       },
       colors: {
-        'gold-h1': '#FFDA71',
+        "gold-h1": "#FFDA71",
         ink: {
           950: "#05050b",
           900: "#0b0b14",
