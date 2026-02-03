@@ -128,14 +128,14 @@ export default function Portfolio() {
               )}
             </div>
           </div>
-          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3">
-            <Link to="/" className="h2 text-gold-h1 hover:text-zinc-200">
+          <div className="mt-4 flex justify-center gap-4 border-t border-white/10 py-3">
+            <Link to="/" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
               Home
             </Link>
-            <Link to="/ballot" className="h2 text-gold-h1 hover:text-zinc-200">
+            <Link to="/ballot" className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4">
               Make Selections
             </Link>
-            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-gold-300">
+            <Link to="/portfolio" className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4">
               Portfolio
             </Link>
             <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
