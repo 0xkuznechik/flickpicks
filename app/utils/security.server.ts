@@ -22,6 +22,13 @@ export function enforceCloudflareOnly(request: Request): Response | null {
     return null;
   }
 
+  // Allow Fly.io health checks
+  const userAgent = request.headers.get("user-agent") || "";
+  if (userAgent.includes("fly-proxy")) {
+    return null;
+  }
+
+
   const host = request.headers.get("host") || "";
   const cfRay = request.headers.get("cf-ray");
   const cloudflareSecret = request.headers.get("x-cloudflare-secret");
