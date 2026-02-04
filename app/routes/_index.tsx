@@ -180,7 +180,7 @@ export default function Index() {
                     item.color || "text-gold-400"
                   }`}
                 >
-                  {item.date} —
+                  {item.date}
                 </span>
                 <span className={item.highlight ? "h3" : "text-zinc-400"}>
                   {item.event}
