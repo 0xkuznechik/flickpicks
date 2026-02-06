@@ -10,7 +10,6 @@ afterEach(() => {
 // Mock environment variables
 process.env.NODE_ENV = "test";
 process.env.SESSION_SECRET = "test-session-secret";
-process.env.CLOUDFLARE_SECRET = "test-cloudflare-secret";
 
 // Mock Remix modules
 vi.mock("@remix-run/react", async () => {
