@@ -9,6 +9,7 @@ import {
 } from "../lib/betting-utils";
 import { prisma } from "../utils/db.server";
 import { getUser } from "../utils/auth.server";
+import { Header } from "../components/Header";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
@@ -80,81 +81,11 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      {/* Sticky Header Container */}
-      <div className="sticky top-0 z-50 bg-black">
-        {/* Navigation */}
-        <nav className="border-b border-white/10 bg-black py-4">
-          <div className="container-pad flex items-center justify-between">
-            <div className="flex-1"></div>
-            <h1 className="h1 flex items-center gap-3">
-              <span className="tracking-widest">FLICK</span>
-              <img
-                src="/images/oscarspoollogo.png"
-                alt="Logo"
-                className="h-10 w-auto"
-              />
-              <span className="tracking-widest">PICKS</span>
-            </h1>
-            <div className="flex-1 flex justify-end gap-4 items-center">
-              {!user && (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    to="/join"
-                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-              {user && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs text-zinc-400">{user.email}</span>
-                  </div>
-                  <Link
-                    to="/logout"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
-                  >
-                    Logout
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center gap-4 border-t border-white/10 py-3">
-            <Link
-              to="/"
-              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
-            >
-              Home
-            </Link>
-            <Link
-              to="/ballot"
-              className="h2 text-gold-h1 hover:text-zinc-200 border-r border-white/20 pr-4"
-            >
-              Make Selections
-            </Link>
-            <Link
-              to="/portfolio"
-              className="h2 text-gold-h1 hover:text-gold-300 border-r border-white/20 pr-4"
-            >
-              Portfolio
-            </Link>
-            <Link to="/faq" className="h2 text-gold-h1 hover:text-zinc-200">
-              FAQ
-            </Link>
-          </div>
-        </nav>
+      <Header user={user} currentPage="portfolio" />
 
+      <div className="sticky top-[73px] z-40 bg-black">
         {/* Header Stats */}
-        <div className="text-center space-y-6 py-6 border-b border-white/10 bg-black">
+        <div className="text-center space-y-6 py-6 border-b border-white/30 bg-black">
           <h1 className="h1">MY PORTFOLIO</h1>
           <div className="flex justify-center gap-0 md:justify-center border border-gold-400/40 rounded-lg overflow-hidden max-w-4xl mx-auto divide-x divide-gold-400/40">
             <div className="flex-1 bg-black p-3 text-center">
