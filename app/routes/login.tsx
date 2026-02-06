@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, useActionData, useSearchParams } from "@remix-run/react";
 import { z } from "zod";
-import { createUserSession, getUserId, login } from "../utils/auth.server";
+import { createUserSession, getUser, login } from "../utils/auth.server";
 
 const Schema = z.object({
   email: z.string().email("Enter a valid email").max(320),
@@ -17,8 +17,8 @@ type ActionData =
   | { ok: false; formError: string };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await getUserId(request);
-  if (userId) throw redirect("/ballot");
+  const user = await getUser(request);
+  if (user) throw redirect("/ballot");
   return json({});
 }
 
