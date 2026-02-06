@@ -23,7 +23,7 @@ async function seed() {
       create: {
         email,
         passwordHash: hashedPassword,
-        passwordMustBeChanged: true,
+        passwordMustBeChanged: false, // TODO: Change this to true when done.
         username: email.split('@')[0], // a default username
       },
     });
