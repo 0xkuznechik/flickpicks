@@ -101,7 +101,7 @@ export async function action({ request }: ActionFunctionArgs) {
       data: { lockedAt: new Date() },
     });
 
-    return redirect("/portfolio");
+    return redirect("/ballot");
   }
 
   // Clear all unsaved and unsubmitted picks
@@ -597,49 +597,280 @@ export default function Ballot() {
     setShowSubmitAllModal(false);
   };
 
+  // Get submitted picks with details
+  const getSubmittedPicks = () => {
+    return categories
+      .filter((category) => {
+        const selectedNominee = localPicks[category.key];
+        const isSubmitted = submittedPicks[category.key];
+        return selectedNominee && isSubmitted;
+      })
+      .map((category) => {
+        const selectedNominee = localPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
+        const nominee = category.nominees.find(
+          (n) => formatNominee(n) === selectedNominee
+        );
+        const odds = nominee?.odds || null;
+        const profit =
+          odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
+        const totalReturn =
+          odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0;
+
+        return {
+          categoryKey: category.key,
+          categoryTitle: category.title,
+          nominee: selectedNominee,
+          odds,
+          betAmount,
+          profit,
+          totalReturn,
+        };
+      });
+  };
+
+  // Get pending/saved picks with details
+  const getPendingPicks = () => {
+    return categories
+      .filter((category) => {
+        const selectedNominee = localPicks[category.key];
+        const isSaved = savedPicks[category.key];
+        const isSubmitted = submittedPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
+        return selectedNominee && (isSaved || betAmount > 0) && !isSubmitted;
+      })
+      .map((category) => {
+        const selectedNominee = localPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
+        const isSaved = savedPicks[category.key];
+        const nominee = category.nominees.find(
+          (n) => formatNominee(n) === selectedNominee
+        );
+        const odds = nominee?.odds || null;
+        const profit =
+          odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
+        const totalReturn =
+          odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0;
+
+        return {
+          categoryKey: category.key,
+          categoryTitle: category.title,
+          nominee: selectedNominee,
+          odds,
+          betAmount,
+          profit,
+          totalReturn,
+          isSaved,
+        };
+      });
+  };
+
+  const submittedPicksList = getSubmittedPicks();
+  const pendingPicksList = getPendingPicks();
+
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
       <Header user={user} currentPage="ballot" />
 
-      {/* Header Stats */}
-      <div className="sticky top-[73px] z-40 bg-black">
-        <div className="text-center space-y-6 py-6 border-b border-white/30 bg-black">
-          <div className="flex justify-center gap-0 md:justify-center border border-gold-400/40 rounded-lg overflow-hidden max-w-6xl mx-auto divide-x divide-gold-400/40">
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Total Selection Amount
+      <main className="container-pad py-8">
+        {/* Portfolio Card */}
+        {(submittedPicksList.length > 0 || pendingPicksList.length > 0) && (
+          <div className="max-w-3xl mx-auto mb-8">
+            <div className="rounded-lg border border-white/20 bg-zinc-900/30 overflow-hidden">
+              <div className="bg-zinc-900/50 px-6 py-4 border-b border-white/10">
+                <h2 className="text-xl font-bold text-gold-400">Your Picks</h2>
               </div>
-              <div className="text-lg md:text-xl font-bold text-white">
-                ${calculateTotalSelectionAmount().toFixed(2)}
-              </div>
-            </div>
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Potential Profit
-              </div>
-              <div className="text-lg md:text-xl font-bold text-gold-400">
-                ${calculateTotalPotentialWinnings().toFixed(2)}
-              </div>
-            </div>
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Total Return
-              </div>
-              <div className="text-lg md:text-xl font-bold text-green-400">
-                ${calculateTotalReturnAmount().toFixed(2)}
+
+              <div className="p-6 space-y-6">
+                {/* Submitted Picks Section */}
+                {submittedPicksList.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-gold-400 flex items-center gap-2">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                        Submitted ({submittedPicksList.length})
+                      </h3>
+                      <div className="text-xs text-zinc-400">
+                        Total: $
+                        {submittedPicksList
+                          .reduce((sum, pick) => sum + pick.betAmount, 0)
+                          .toFixed(2)}{" "}
+                        → Potential: ${" "}
+                        {submittedPicksList
+                          .reduce((sum, pick) => sum + pick.totalReturn, 0)
+                          .toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {submittedPicksList.map((pick) => (
+                        <div
+                          key={pick.categoryKey}
+                          className="bg-gold-500/5 border border-gold-500/20 rounded p-3 grid grid-cols-[1fr_80px_80px_90px_90px] gap-3 items-center text-xs"
+                        >
+                          <div>
+                            <div className="text-zinc-400 mb-1">
+                              {pick.categoryTitle}
+                            </div>
+                            <div className="text-sm font-semibold text-white">
+                              {pick.nominee}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-zinc-500 mb-1">Bet</div>
+                            <div className="font-mono text-white">
+                              ${pick.betAmount.toFixed(2)}
+                            </div>
+                          </div>
+                          {pick.odds ? (
+                            <>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Odds</div>
+                                <div className="font-mono text-gold-400">
+                                  {formatOdds(pick.odds)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Profit</div>
+                                <div className="font-mono text-gold-400">
+                                  ${pick.profit.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Return</div>
+                                <div className="font-mono text-green-400">
+                                  ${pick.totalReturn.toFixed(2)}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending/Saved Picks Section */}
+                {pendingPicksList.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Pending ({pendingPicksList.length})
+                      </h3>
+                      <div className="text-xs text-zinc-400">
+                        Total: $
+                        {pendingPicksList
+                          .reduce((sum, pick) => sum + pick.betAmount, 0)
+                          .toFixed(2)}{" "}
+                        → Potential: ${" "}
+                        {pendingPicksList
+                          .reduce((sum, pick) => sum + pick.totalReturn, 0)
+                          .toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {pendingPicksList.map((pick) => (
+                        <div
+                          key={pick.categoryKey}
+                          className={`rounded p-3 grid grid-cols-[1fr_80px_80px_90px_90px] gap-3 items-center text-xs ${
+                            pick.isSaved
+                              ? "bg-blue-500/5 border border-blue-500/20"
+                              : "bg-zinc-800/30 border border-zinc-700/30"
+                          }`}
+                        >
+                          <div>
+                            <div className="text-zinc-400 mb-1 flex items-center gap-2">
+                              {pick.categoryTitle}
+                              {pick.isSaved && (
+                                <span className="text-[10px] uppercase tracking-wider bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                                  Saved
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm font-semibold text-white">
+                              {pick.nominee}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-zinc-500 mb-1">Bet</div>
+                            <div className="font-mono text-white">
+                              ${pick.betAmount.toFixed(2)}
+                            </div>
+                          </div>
+                          {pick.odds ? (
+                            <>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Odds</div>
+                                <div className="font-mono text-gold-400">
+                                  {formatOdds(pick.odds)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Profit</div>
+                                <div className="font-mono text-gold-400">
+                                  ${pick.profit.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Return</div>
+                                <div className="font-mono text-green-400">
+                                  ${pick.totalReturn.toFixed(2)}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {locked && (
+                  <div className="rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 text-center">
+                    Ballot is locked.
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        )}
 
-          {locked && (
-            <div className="inline-block rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
-              Ballot is locked.
-            </div>
-          )}
-        </div>
-      </div>
-
-      <main className="container-pad py-8">
         {/* Categories Grid - Single Column */}
         <div className="max-w-3xl mx-auto space-y-6">
           {categories.map((c) => (

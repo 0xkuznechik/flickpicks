@@ -2,7 +2,7 @@ import { Link } from "@remix-run/react";
 
 type HeaderProps = {
   user?: { email: string; lockedAt: Date | string | null } | null;
-  currentPage?: "home" | "ballot" | "portfolio" | "faq";
+  currentPage?: "home" | "ballot" | "faq";
 };
 
 export function Header({ user, currentPage }: HeaderProps) {
@@ -74,16 +74,6 @@ export function Header({ user, currentPage }: HeaderProps) {
             }`}
           >
             Make Selections
-          </Link>
-          <Link
-            to="/portfolio"
-            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 ${
-              currentPage === "portfolio"
-                ? "hover:text-gold-300"
-                : "hover:text-zinc-200"
-            }`}
-          >
-            Portfolio
           </Link>
           <Link
             to="/faq"
