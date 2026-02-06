@@ -18,6 +18,8 @@ import { prisma } from "../utils/db.server";
 import { getUser } from "../utils/auth.server";
 import { Header } from "../components/Header";
 
+const MAX_BUDGET = 1000;
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
 
@@ -73,6 +75,28 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Submit all saved picks at once (make them permanent)
   if (intent === "submitAll") {
+    // Check total budget before submitting
+    const allPicks = await prisma.pick.findMany({
+      where: { userId: user.id },
+      select: { betAmount: true },
+    });
+    const totalBet = allPicks.reduce(
+      (sum, p) => sum + parseFloat(p.betAmount.toString()),
+      0
+    );
+
+    if (totalBet > MAX_BUDGET) {
+      return json<ActionData>(
+        {
+          ok: false,
+          message: `Cannot submit: Your total bets ($${totalBet.toFixed(
+            2
+          )}) exceed the $${MAX_BUDGET} limit. Please adjust your bet amounts.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Get all saved but not yet submitted picks
     const picksToSubmit = await prisma.pick.findMany({
       where: {
@@ -119,6 +143,29 @@ export async function action({ request }: ActionFunctionArgs) {
   // Save individual pick (temporary)
   if (intent === "savePick") {
     const categoryKey = String(form.get("categoryKey"));
+
+    // Check total budget
+    const allPicks = await prisma.pick.findMany({
+      where: { userId: user.id },
+      select: { betAmount: true },
+    });
+    const totalBet = allPicks.reduce(
+      (sum, p) => sum + parseFloat(p.betAmount.toString()),
+      0
+    );
+
+    if (totalBet > MAX_BUDGET) {
+      return json<ActionData>(
+        {
+          ok: false,
+          message: `Budget exceeded. Your total bets ($${totalBet.toFixed(
+            2
+          )}) exceed the $${MAX_BUDGET} limit.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Check if pick exists
     const pick = await prisma.pick.findUnique({
       where: {
@@ -188,6 +235,32 @@ export async function action({ request }: ActionFunctionArgs) {
   if (intent === "saveBetAmount") {
     const categoryKey = String(form.get("categoryKey"));
     const betAmount = parseFloat(String(form.get("betAmount") ?? "0"));
+
+    // Check total budget with new bet amount
+    const allPicks = await prisma.pick.findMany({
+      where: {
+        userId: user.id,
+        categoryKey: { not: categoryKey },
+      },
+      select: { betAmount: true },
+    });
+    const otherBetsTotal = allPicks.reduce(
+      (sum, p) => sum + parseFloat(p.betAmount.toString()),
+      0
+    );
+    const newTotal = otherBetsTotal + betAmount;
+
+    if (newTotal > MAX_BUDGET) {
+      return json<ActionData>(
+        {
+          ok: false,
+          message: `Budget exceeded. This bet would bring your total to $${newTotal.toFixed(
+            2
+          )}, which exceeds the $${MAX_BUDGET} limit.`,
+        },
+        { status: 400 }
+      );
+    }
 
     // Check if pick is locked
     const pick = await prisma.pick.findUnique({
@@ -284,6 +357,8 @@ export default function Ballot() {
   const [showSubmitAllModal, setShowSubmitAllModal] = useState(false);
   // Refs for bet amount sections to detect clicks outside
   const betSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Flash message state
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
   // Load from localStorage if not logged in
   useEffect(() => {
@@ -422,7 +497,23 @@ export default function Ballot() {
 
   const handleBetAmountChange = (categoryKey: string, amount: string) => {
     const numAmount = parseFloat(amount) || 0;
-    setBetAmounts((prev) => ({ ...prev, [categoryKey]: numAmount }));
+
+    // Calculate total if this bet were applied
+    const totalWithNewBet = categories.reduce((sum, category) => {
+      if (category.key === categoryKey) {
+        return sum + numAmount;
+      }
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    // Only update if it doesn't exceed budget
+    if (totalWithNewBet <= MAX_BUDGET) {
+      setBetAmounts((prev) => ({ ...prev, [categoryKey]: numAmount }));
+    } else {
+      // Show flash message
+      setFlashMessage("Out of budget!");
+      setTimeout(() => setFlashMessage(null), 2000);
+    }
   };
 
   const handleBetAmountBlur = (categoryKey: string, nominee: string) => {
@@ -438,6 +529,20 @@ export default function Ballot() {
       if (!user && typeof window !== "undefined") {
         localStorage.setItem("guestPicks", JSON.stringify(newPicks));
       }
+      return;
+    }
+
+    // Check if total exceeds budget
+    const totalBet = categories.reduce((sum, category) => {
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    if (totalBet > MAX_BUDGET) {
+      alert(
+        `Your total bets ($${totalBet.toFixed(
+          2
+        )}) exceed your budget of $${MAX_BUDGET}. Please adjust your bet amounts.`
+      );
       return;
     }
 
@@ -465,6 +570,20 @@ export default function Ballot() {
     // If not logged in, redirect to sign up
     if (!user) {
       window.location.href = "/join?redirectTo=/ballot";
+      return;
+    }
+
+    // Check if total exceeds budget
+    const totalBet = categories.reduce((sum, category) => {
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    if (totalBet > MAX_BUDGET) {
+      alert(
+        `Your total bets ($${totalBet.toFixed(
+          2
+        )}) exceed your budget of $${MAX_BUDGET}. Please adjust your bet amounts before saving.`
+      );
       return;
     }
 
@@ -591,6 +710,21 @@ export default function Ballot() {
       return;
     }
 
+    // Final check before submission
+    const totalBet = categories.reduce((sum, category) => {
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    if (totalBet > MAX_BUDGET) {
+      alert(
+        `Cannot submit: Your total bets ($${totalBet.toFixed(
+          2
+        )}) exceed your budget of $${MAX_BUDGET}.`
+      );
+      setShowSubmitAllModal(false);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("intent", "submitAll");
     submit(formData, { method: "post" });
@@ -668,9 +802,34 @@ export default function Ballot() {
   const submittedPicksList = getSubmittedPicks();
   const pendingPicksList = getPendingPicks();
 
+  // Calculate total budget used
+  const totalBudgetUsed = categories.reduce((sum, category) => {
+    return sum + (betAmounts[category.key] || 0);
+  }, 0);
+  const remainingBudget = MAX_BUDGET - totalBudgetUsed;
+  const budgetExceeded = totalBudgetUsed > MAX_BUDGET;
+
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      <Header user={user} currentPage="ballot" />
+      <Header
+        user={user}
+        currentPage="ballot"
+        budgetInfo={{
+          used: totalBudgetUsed,
+          max: MAX_BUDGET,
+          remaining: remainingBudget,
+          exceeded: budgetExceeded,
+        }}
+      />
+
+      {/* Flash Message */}
+      {flashMessage && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold">
+            {flashMessage}
+          </div>
+        </div>
+      )}
 
       <main className="container-pad py-8">
         {/* Portfolio Card */}
@@ -1028,7 +1187,9 @@ export default function Ballot() {
                               {!isSaved && (
                                 <button
                                   onClick={() => handleSavePick(c.key)}
-                                  disabled={locked || betAmount <= 0}
+                                  disabled={
+                                    locked || betAmount <= 0 || budgetExceeded
+                                  }
                                   className="w-full px-3 py-2 text-xs font-medium bg-gold-500/10 border border-gold-500/30 text-gold-400 rounded hover:bg-gold-500/20 hover:border-gold-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
                                   <svg
@@ -1107,14 +1268,29 @@ export default function Ballot() {
           {!locked && getPicksToSubmit().length > 0 && (
             <div className="flex justify-center">
               <button
-                onClick={() =>
+                onClick={() => {
+                  if (budgetExceeded) {
+                    alert(
+                      `Cannot submit: Your total bets exceed your budget of $${MAX_BUDGET}.`
+                    );
+                    return;
+                  }
                   user
                     ? setShowSubmitAllModal(true)
-                    : (window.location.href = "/join?redirectTo=/ballot")
-                }
-                className="rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)] transition-all"
+                    : (window.location.href = "/join?redirectTo=/ballot");
+                }}
+                disabled={budgetExceeded}
+                className={`rounded-full px-8 py-3 font-bold transition-all ${
+                  budgetExceeded
+                    ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    : "bg-gold-400 text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)]"
+                }`}
               >
-                {user ? "Submit All Saved Picks" : "Sign Up to Submit"}
+                {budgetExceeded
+                  ? "Budget Exceeded"
+                  : user
+                  ? "Submit All Saved Picks"
+                  : "Sign Up to Submit"}
               </button>
             </div>
           )}

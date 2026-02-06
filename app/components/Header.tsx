@@ -3,9 +3,15 @@ import { Link } from "@remix-run/react";
 type HeaderProps = {
   user?: { email: string; lockedAt: Date | string | null } | null;
   currentPage?: "home" | "ballot" | "faq";
+  budgetInfo?: {
+    used: number;
+    max: number;
+    remaining: number;
+    exceeded: boolean;
+  };
 };
 
-export function Header({ user, currentPage }: HeaderProps) {
+export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
   return (
     <div className="sticky top-0 z-50 bg-black">
       {/* Navigation */}
@@ -40,9 +46,31 @@ export function Header({ user, currentPage }: HeaderProps) {
             )}
             {user && (
               <>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-zinc-400">{user.email}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                    <span className="text-xs text-zinc-400">{user.email}</span>
+                  </div>
+                  {budgetInfo && (
+                    <div className="text-[10px] font-mono">
+                      <span className="text-zinc-500">Budget: </span>
+                      <span
+                        className={`font-bold ${
+                          budgetInfo.exceeded
+                            ? "text-red-400"
+                            : budgetInfo.remaining < 100
+                            ? "text-yellow-400"
+                            : "text-green-400"
+                        }`}
+                      >
+                        ${budgetInfo.remaining.toFixed(2)}
+                      </span>
+                      <span className="text-zinc-600">
+                        {" "}
+                        / ${budgetInfo.max.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <Link
                   to="/logout"
