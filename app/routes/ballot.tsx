@@ -488,11 +488,25 @@ export default function Ballot() {
             return newPicks;
           });
 
+          // Also clear bet amount
+          setBetAmounts((prev) => {
+            const newBets = { ...prev };
+            delete newBets[categoryKey];
+            return newBets;
+          });
+
+          // Clear the ref
+          betSectionRefs.current[categoryKey] = null;
+
           // If not logged in, update localStorage
           if (!user && typeof window !== "undefined") {
             const newPicks = { ...localPicks };
             delete newPicks[categoryKey];
             localStorage.setItem("guestPicks", JSON.stringify(newPicks));
+
+            const newBets = { ...betAmounts };
+            delete newBets[categoryKey];
+            localStorage.setItem("guestBets", JSON.stringify(newBets));
           } else if (user) {
             // If logged in, delete the unsaved pick from server
             const formData = new FormData();
@@ -803,9 +817,11 @@ export default function Ballot() {
     return categories
       .filter((category) => {
         const selectedNominee = localPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
         const isSaved = savedPicks[category.key];
         const isSubmitted = submittedPicks[category.key];
-        return selectedNominee && isSaved && !isSubmitted;
+        // Only show picks that are saved AND have a bet amount
+        return selectedNominee && isSaved && betAmount > 0 && !isSubmitted;
       })
       .map((category) => {
         const selectedNominee = localPicks[category.key];
