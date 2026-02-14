@@ -133,6 +133,7 @@ export async function action({ request }: ActionFunctionArgs) {
     await prisma.pick.deleteMany({
       where: {
         userId: user.id,
+        savedAt: null, // Only clear picks that haven't been saved
         lockedAt: null, // Only clear picks that haven't been submitted
       },
     });
@@ -526,6 +527,9 @@ export default function Ballot() {
     // Check if this specific pick is submitted (permanent)
     if (submittedPicks[categoryKey]) return;
     if (locked) return; // Global ballot lock
+
+    // Check if this category already has a saved pick - if so, don't allow changing
+    if (savedPicks[categoryKey]) return;
 
     const newPicks = { ...localPicks, [categoryKey]: nominee };
     setLocalPicks(newPicks);
@@ -1011,7 +1015,7 @@ export default function Ballot() {
                       {pendingPicksList.map((pick) => (
                         <div
                           key={pick.categoryKey}
-                          className={`rounded p-3 grid grid-cols-[1fr_80px_80px_90px_90px] gap-3 items-center text-xs ${
+                          className={`rounded p-3 grid grid-cols-[1fr_80px_80px_90px_90px_100px] gap-3 items-center text-xs ${
                             pick.isSaved
                               ? "bg-blue-500/5 border border-blue-500/20"
                               : "bg-zinc-800/30 border border-zinc-700/30"
@@ -1064,6 +1068,18 @@ export default function Ballot() {
                               <div></div>
                             </>
                           )}
+                          <div className="text-center">
+                            {pick.isSaved && (
+                              <button
+                                onClick={() =>
+                                  handleUnsavePick(pick.categoryKey)
+                                }
+                                className="px-2 py-1 text-[10px] font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors"
+                              >
+                                Unsave
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1110,7 +1126,9 @@ export default function Ballot() {
                     <div key={nomineeStr} className="space-y-2">
                       <button
                         onClick={() => handleSelect(c.key, nomineeStr)}
-                        disabled={locked || isSubmitted}
+                        disabled={
+                          locked || isSubmitted || (isSaved && !isSelected)
+                        }
                         className={`w-full text-left flex justify-between items-center px-3 py-2 rounded text-[11px] md:text-xs transition-colors ${
                           isSelected
                             ? isSubmitted
@@ -1120,7 +1138,7 @@ export default function Ballot() {
                               : "bg-white/10 text-green-400 font-semibold"
                             : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                         } ${
-                          (locked || isSubmitted) &&
+                          (locked || isSubmitted || (isSaved && !isSelected)) &&
                           "cursor-not-allowed opacity-60"
                         }`}
                       >
@@ -1185,7 +1203,7 @@ export default function Ballot() {
                             ref={(el) => {
                               betSectionRefs.current[c.key] = el;
                             }}
-                            className="ml-3 p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2"
+                            className="p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2"
                           >
                             <div className="flex items-center gap-2">
                               <label className="text-[10px] md:text-[11px] text-zinc-400 whitespace-nowrap">
@@ -1313,6 +1331,32 @@ export default function Ballot() {
                             )}
                           </div>
                         )}
+
+                      {/* Unsave button for saved picks (shown outside bet section) */}
+                      {isSelected && isSaved && !isSubmitted && (
+                        <div>
+                          <button
+                            onClick={() => handleUnsavePick(c.key)}
+                            disabled={locked}
+                            className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                            Unsave This Pick
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1356,7 +1400,9 @@ export default function Ballot() {
 
           {/* Clear Unsaved Picks Button */}
           {!locked &&
-            Object.keys(localPicks).some((key) => !submittedPicks[key]) && (
+            Object.keys(localPicks).some(
+              (key) => !savedPicks[key] && !submittedPicks[key]
+            ) && (
               <div className="flex justify-center">
                 <Form method="post">
                   <input type="hidden" name="intent" value="clearUnsaved" />
