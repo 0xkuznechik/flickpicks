@@ -770,8 +770,7 @@ export default function Ballot() {
         const selectedNominee = localPicks[category.key];
         const isSaved = savedPicks[category.key];
         const isSubmitted = submittedPicks[category.key];
-        const betAmount = betAmounts[category.key] || 0;
-        return selectedNominee && (isSaved || betAmount > 0) && !isSubmitted;
+        return selectedNominee && isSaved && !isSubmitted;
       })
       .map((category) => {
         const selectedNominee = localPicks[category.key];
