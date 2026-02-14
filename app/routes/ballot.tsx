@@ -140,6 +140,29 @@ export async function action({ request }: ActionFunctionArgs) {
     return redirect("/ballot");
   }
 
+  // Delete single unsaved pick
+  if (intent === "deletePick") {
+    const categoryKey = String(form.get("categoryKey"));
+
+    // Only delete if not saved and not submitted
+    const pick = await prisma.pick.findUnique({
+      where: {
+        userId_categoryKey: { userId: user.id, categoryKey },
+      },
+      select: { savedAt: true, lockedAt: true },
+    });
+
+    if (pick && !pick.savedAt && !pick.lockedAt) {
+      await prisma.pick.delete({
+        where: {
+          userId_categoryKey: { userId: user.id, categoryKey },
+        },
+      });
+    }
+
+    return json<ActionData>({ ok: true });
+  }
+
   // Save individual pick (temporary)
   if (intent === "savePick") {
     const categoryKey = String(form.get("categoryKey"));
@@ -449,21 +472,33 @@ export default function Ballot() {
       Object.keys(localPicks).forEach((categoryKey) => {
         const betSection = betSectionRefs.current[categoryKey];
         const betAmount = betAmounts[categoryKey] || 0;
+        const isSaved = savedPicks[categoryKey];
 
-        // If bet section exists, click is outside it, and bet amount is 0
+        // If bet section exists, click is outside it, bet amount is 0, and not saved
         if (
           betSection &&
           !betSection.contains(event.target as Node) &&
-          betAmount === 0
+          betAmount === 0 &&
+          !isSaved
         ) {
-          // Deselect the nominee
-          const newPicks = { ...localPicks };
-          delete newPicks[categoryKey];
-          setLocalPicks(newPicks);
+          // Deselect the nominee locally using functional update to avoid race conditions
+          setLocalPicks((prev) => {
+            const newPicks = { ...prev };
+            delete newPicks[categoryKey];
+            return newPicks;
+          });
 
           // If not logged in, update localStorage
           if (!user && typeof window !== "undefined") {
+            const newPicks = { ...localPicks };
+            delete newPicks[categoryKey];
             localStorage.setItem("guestPicks", JSON.stringify(newPicks));
+          } else if (user) {
+            // If logged in, delete the unsaved pick from server
+            const formData = new FormData();
+            formData.append("intent", "deletePick");
+            formData.append("categoryKey", categoryKey);
+            submit(formData, { method: "post", replace: true });
           }
         }
       });
@@ -471,7 +506,7 @@ export default function Ballot() {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [localPicks, betAmounts, user]);
+  }, [localPicks, betAmounts, savedPicks, user, submit]);
 
   const handleSelect = (categoryKey: string, nominee: string) => {
     // Check if this specific pick is submitted (permanent)
@@ -1126,137 +1161,142 @@ export default function Ballot() {
                         </span>
                       </button>
 
-                      {isSelected && nominee.odds && (
-                        <div
-                          ref={(el) => {
-                            betSectionRefs.current[c.key] = el;
-                          }}
-                          className="ml-3 p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <label className="text-[10px] md:text-[11px] text-zinc-400 whitespace-nowrap">
-                              Bet Amount:
-                            </label>
-                            <div className="relative flex-1">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] md:text-[11px] text-zinc-500">
-                                $
-                              </span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={betAmount || ""}
-                                onChange={(e) =>
-                                  handleBetAmountChange(c.key, e.target.value)
-                                }
-                                onBlur={() =>
-                                  handleBetAmountBlur(c.key, nomineeStr)
-                                }
-                                disabled={locked || isSubmitted}
-                                placeholder="0.00"
-                                className="w-full pl-5 pr-2 py-1 bg-black border border-zinc-700 rounded text-[10px] md:text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-gold-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                              />
-                            </div>
-                          </div>
-
+                      {isSelected &&
+                        nominee.odds &&
+                        !isSaved &&
+                        !isSubmitted && (
                           <div
-                            className={`text-xs space-y-1 pt-2 border-t transition-opacity duration-200 ${
-                              betAmount > 0
-                                ? "opacity-100 border-zinc-700"
-                                : "opacity-0 border-transparent pointer-events-none"
-                            }`}
+                            ref={(el) => {
+                              betSectionRefs.current[c.key] = el;
+                            }}
+                            className="ml-3 p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2"
                           >
-                            <div className="flex justify-between">
-                              <span className="text-zinc-400">
-                                Potential Profit:
-                              </span>
-                              <span className="text-gold-400 font-mono font-semibold">
-                                ${profit.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-zinc-400">
-                                Total Return:
-                              </span>
-                              <span className="text-green-400 font-mono font-semibold">
-                                ${totalReturn.toFixed(2)}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Save/Unsave Buttons */}
-                          {!isSubmitted && (
-                            <div className="pt-2 border-t border-zinc-700">
-                              {!isSaved && (
-                                <button
-                                  onClick={() => handleSavePick(c.key)}
-                                  disabled={
-                                    locked || betAmount <= 0 || budgetExceeded
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] md:text-[11px] text-zinc-400 whitespace-nowrap">
+                                Bet Amount:
+                              </label>
+                              <div className="relative flex-1">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] md:text-[11px] text-zinc-500">
+                                  $
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={betAmount || ""}
+                                  onChange={(e) =>
+                                    handleBetAmountChange(c.key, e.target.value)
                                   }
-                                  className="w-full px-3 py-2 text-xs font-medium bg-gold-500/10 border border-gold-500/30 text-gold-400 rounded hover:bg-gold-500/20 hover:border-gold-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                  {user ? "Save This Pick" : "Sign Up to Save"}
-                                </button>
-                              )}
-                              {isSaved && (
-                                <button
-                                  onClick={() => handleUnsavePick(c.key)}
-                                  disabled={locked}
-                                  className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M6 18L18 6M6 6l12 12"
-                                    />
-                                  </svg>
-                                  Unsave This Pick
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          {isSubmitted && (
-                            <div className="pt-2 border-t border-zinc-700 text-center">
-                              <div className="text-xs text-gold-400/70 italic flex items-center justify-center gap-2">
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                  />
-                                </svg>
-                                This pick is submitted
+                                  onBlur={() =>
+                                    handleBetAmountBlur(c.key, nomineeStr)
+                                  }
+                                  disabled={locked || isSubmitted}
+                                  placeholder="0.00"
+                                  className="w-full pl-5 pr-2 py-1 bg-black border border-zinc-700 rounded text-[10px] md:text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-gold-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                />
                               </div>
                             </div>
-                          )}
-                        </div>
-                      )}
+
+                            <div
+                              className={`text-xs space-y-1 pt-2 border-t transition-opacity duration-200 ${
+                                betAmount > 0
+                                  ? "opacity-100 border-zinc-700"
+                                  : "opacity-0 border-transparent pointer-events-none"
+                              }`}
+                            >
+                              <div className="flex justify-between">
+                                <span className="text-zinc-400">
+                                  Potential Profit:
+                                </span>
+                                <span className="text-gold-400 font-mono font-semibold">
+                                  ${profit.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-zinc-400">
+                                  Total Return:
+                                </span>
+                                <span className="text-green-400 font-mono font-semibold">
+                                  ${totalReturn.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Save/Unsave Buttons */}
+                            {!isSubmitted && (
+                              <div className="pt-2 border-t border-zinc-700">
+                                {!isSaved && (
+                                  <button
+                                    onClick={() => handleSavePick(c.key)}
+                                    disabled={
+                                      locked || betAmount <= 0 || budgetExceeded
+                                    }
+                                    className="w-full px-3 py-2 text-xs font-medium bg-gold-500/10 border border-gold-500/30 text-gold-400 rounded hover:bg-gold-500/20 hover:border-gold-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                  >
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                    {user
+                                      ? "Save This Pick"
+                                      : "Sign Up to Save"}
+                                  </button>
+                                )}
+                                {isSaved && (
+                                  <button
+                                    onClick={() => handleUnsavePick(c.key)}
+                                    disabled={locked}
+                                    className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                  >
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                    Unsave This Pick
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {isSubmitted && (
+                              <div className="pt-2 border-t border-zinc-700 text-center">
+                                <div className="text-xs text-gold-400/70 italic flex items-center justify-center gap-2">
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                    />
+                                  </svg>
+                                  This pick is submitted
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                     </div>
                   );
                 })}
