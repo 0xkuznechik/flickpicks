@@ -82,10 +82,10 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
             )}
           </div>
         </div>
-        <div className="flex justify-center gap-4 border-t border-white/30 py-3 mt-4">
+        <div className="flex items-center justify-center gap-4 border-t border-white/30 py-4 mt-6">
           <Link
             to="/"
-            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 ${
+            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 leading-none ${
               currentPage === "home"
                 ? "hover:text-gold-300"
                 : "hover:text-zinc-200"
@@ -95,7 +95,7 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
           </Link>
           <Link
             to="/ballot"
-            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 ${
+            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 leading-none ${
               currentPage === "ballot"
                 ? "hover:text-gold-300"
                 : "hover:text-zinc-200"
@@ -105,7 +105,7 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
           </Link>
           <Link
             to="/faq"
-            className={`text-lg text-gold-h1 ${
+            className={`text-lg text-gold-h1 leading-none ${
               currentPage === "faq"
                 ? "hover:text-gold-300"
                 : "hover:text-zinc-200"

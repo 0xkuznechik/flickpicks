@@ -111,7 +111,13 @@ export default function Index() {
                 >
                   {item.date}
                 </span>
-                <span className={item.highlight ? "h3" : "text-zinc-400"}>
+                <span
+                  className={
+                    item.highlight
+                      ? "text-base font-semibold text-white"
+                      : "text-zinc-400"
+                  }
+                >
                   {item.event}
                 </span>
               </div>
