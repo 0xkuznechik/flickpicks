@@ -1159,26 +1159,30 @@ export default function Ballot() {
                             </div>
                           </div>
 
-                          {betAmount > 0 && (
-                            <div className="text-xs space-y-1 pt-2 border-t border-zinc-700">
-                              <div className="flex justify-between">
-                                <span className="text-zinc-400">
-                                  Potential Profit:
-                                </span>
-                                <span className="text-gold-400 font-mono font-semibold">
-                                  ${profit.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-zinc-400">
-                                  Total Return:
-                                </span>
-                                <span className="text-green-400 font-mono font-semibold">
-                                  ${totalReturn.toFixed(2)}
-                                </span>
-                              </div>
+                          <div
+                            className={`text-xs space-y-1 pt-2 border-t transition-opacity duration-200 ${
+                              betAmount > 0
+                                ? "opacity-100 border-zinc-700"
+                                : "opacity-0 border-transparent pointer-events-none"
+                            }`}
+                          >
+                            <div className="flex justify-between">
+                              <span className="text-zinc-400">
+                                Potential Profit:
+                              </span>
+                              <span className="text-gold-400 font-mono font-semibold">
+                                ${profit.toFixed(2)}
+                              </span>
                             </div>
-                          )}
+                            <div className="flex justify-between">
+                              <span className="text-zinc-400">
+                                Total Return:
+                              </span>
+                              <span className="text-green-400 font-mono font-semibold">
+                                ${totalReturn.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
 
                           {/* Save/Unsave Buttons */}
                           {!isSubmitted && (
