@@ -16,7 +16,7 @@ import stylesheet from "./styles/tailwind.css?url";
 import { getUser } from "./utils/auth.server";
 
 export const meta: MetaFunction = () => [
-  { title: "Oscars Pool" },
+  { title: "Flick Picks" },
   { name: "viewport", content: "width=device-width, initial-scale=1" },
 ];
 

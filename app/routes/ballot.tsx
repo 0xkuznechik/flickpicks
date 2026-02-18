@@ -472,14 +472,12 @@ export default function Ballot() {
       // Check each selected category with a bet section
       Object.keys(localPicks).forEach((categoryKey) => {
         const betSection = betSectionRefs.current[categoryKey];
-        const betAmount = betAmounts[categoryKey] || 0;
         const isSaved = savedPicks[categoryKey];
 
-        // If bet section exists, click is outside it, bet amount is 0, and not saved
+        // If bet section exists, click is outside it, and not saved
         if (
           betSection &&
           !betSection.contains(event.target as Node) &&
-          betAmount === 0 &&
           !isSaved
         ) {
           // Deselect the nominee locally using functional update to avoid race conditions
@@ -499,15 +497,19 @@ export default function Ballot() {
           // Clear the ref
           betSectionRefs.current[categoryKey] = null;
 
-          // If not logged in, update localStorage
+          // If not logged in, update localStorage using updated state
           if (!user && typeof window !== "undefined") {
-            const newPicks = { ...localPicks };
-            delete newPicks[categoryKey];
-            localStorage.setItem("guestPicks", JSON.stringify(newPicks));
-
-            const newBets = { ...betAmounts };
-            delete newBets[categoryKey];
-            localStorage.setItem("guestBets", JSON.stringify(newBets));
+            // Use functional updates to get latest state
+            setLocalPicks((currentPicks) => {
+              const newPicks = { ...currentPicks };
+              localStorage.setItem("guestPicks", JSON.stringify(newPicks));
+              return currentPicks;
+            });
+            setBetAmounts((currentBets) => {
+              const newBets = { ...currentBets };
+              localStorage.setItem("guestBets", JSON.stringify(newBets));
+              return currentBets;
+            });
           } else if (user) {
             // If logged in, delete the unsaved pick from server
             const formData = new FormData();
@@ -1194,6 +1196,64 @@ export default function Ballot() {
                           )}
                         </span>
                       </button>
+
+                      {/* For nominees WITHOUT odds - show a simple picked state with remove option */}
+                      {isSelected &&
+                        !nominee.odds &&
+                        !isSaved &&
+                        !isSubmitted && (
+                          <div className="p-3 bg-zinc-900/50 rounded border border-green-500/20 space-y-2">
+                            <div className="text-xs text-zinc-400 text-center">
+                              This category doesn't have betting odds. You can
+                              still track your pick.
+                            </div>
+                            <button
+                              onClick={() => {
+                                // Deselect the nominee
+                                setLocalPicks((prev) => {
+                                  const newPicks = { ...prev };
+                                  delete newPicks[c.key];
+                                  return newPicks;
+                                });
+
+                                // If not logged in, update localStorage
+                                if (!user && typeof window !== "undefined") {
+                                  const newPicks = { ...localPicks };
+                                  delete newPicks[c.key];
+                                  localStorage.setItem(
+                                    "guestPicks",
+                                    JSON.stringify(newPicks)
+                                  );
+                                } else if (user) {
+                                  // If logged in, delete the pick from server
+                                  const formData = new FormData();
+                                  formData.append("intent", "deletePick");
+                                  formData.append("categoryKey", c.key);
+                                  submit(formData, {
+                                    method: "post",
+                                    replace: true,
+                                  });
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                              Remove This Pick
+                            </button>
+                          </div>
+                        )}
 
                       {isSelected &&
                         nominee.odds &&

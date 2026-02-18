@@ -18,15 +18,17 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
       <nav className="border-b border-white/30 bg-black py-4">
         <div className="container-pad flex items-center justify-between">
           <div className="flex-1"></div>
-          <h1 className="h1 flex items-center gap-3">
-            <span className="tracking-widest">FLICK</span>
-            <img
-              src="/images/oscarspoollogo.png"
-              alt="Logo"
-              className="h-10 w-auto"
-            />
-            <span className="tracking-widest">PICKS</span>
-          </h1>
+          <Link to="/" className="no-underline">
+            <h1 className="h1 flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+              <span className="tracking-widest">FLICK</span>
+              <img
+                src="/images/oscarspoollogo.png"
+                alt="Logo"
+                className="h-10 w-auto"
+              />
+              <span className="tracking-widest">PICKS</span>
+            </h1>
+          </Link>
           <div className="flex-1 flex justify-end gap-4 items-center">
             {!user && (
               <>
@@ -82,10 +84,10 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
             )}
           </div>
         </div>
-        <div className="flex items-center justify-center gap-4 border-t border-white/30 py-4 mt-6">
+        <div className="flex items-center justify-center gap-4 border-t border-white/30 py-3 mt-4">
           <Link
             to="/"
-            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 leading-none ${
+            className={`text-sm text-gold-h1 border-r border-white/20 pr-4 leading-none ${
               currentPage === "home"
                 ? "hover:text-gold-300"
                 : "hover:text-zinc-200"
@@ -95,7 +97,7 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
           </Link>
           <Link
             to="/ballot"
-            className={`text-lg text-gold-h1 border-r border-white/20 pr-4 leading-none ${
+            className={`text-sm text-gold-h1 border-r border-white/20 pr-4 leading-none ${
               currentPage === "ballot"
                 ? "hover:text-gold-300"
                 : "hover:text-zinc-200"
@@ -105,7 +107,7 @@ export function Header({ user, currentPage, budgetInfo }: HeaderProps) {
           </Link>
           <Link
             to="/faq"
-            className={`text-lg text-gold-h1 leading-none ${
+            className={`text-sm text-gold-h1 leading-none ${
               currentPage === "faq"
                 ? "hover:text-gold-300"
                 : "hover:text-zinc-200"
