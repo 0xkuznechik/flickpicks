@@ -99,7 +99,7 @@ export default function Index() {
 
       <main className="container-pad space-y-20 py-12">
         {/* Key Event Dates */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8">
+        <section className="rounded-2xl border border-white/10 bg-[#242424] p-8">
           <h2 className="h2 mb-8 text-center">Key Event Dates</h2>
           <div className="mx-auto max-w-4xl space-y-3">
             {keyDates.map((item, idx) => (
@@ -126,7 +126,7 @@ export default function Index() {
         </section>
 
         {/* Top 10 Most Nominated Movies */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8 relative">
+        <section className="rounded-2xl border border-white/10 bg-[#242424] p-8 relative">
           {/* Left Arrow */}
           <button
             onClick={scrollLeft}

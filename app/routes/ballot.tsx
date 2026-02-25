@@ -27,6 +27,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let betMap: Record<string, number> = {};
   let savedMap: Record<string, boolean> = {};
   let submittedMap: Record<string, boolean> = {};
+  let heartMap: Record<string, string> = {};
 
   // Only fetch picks if user is logged in
   if (user) {
@@ -47,6 +48,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       savedMap[p.categoryKey] = p.savedAt !== null;
       submittedMap[p.categoryKey] = p.lockedAt !== null;
     }
+
+    const hearts = await prisma.heartPick.findMany({
+      where: { userId: user.id },
+      select: { categoryKey: true, nominee: true },
+    });
+    for (const h of hearts) {
+      heartMap[h.categoryKey] = h.nominee;
+    }
   }
 
   return json({
@@ -55,6 +64,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     betMap,
     savedMap,
     submittedMap,
+    heartMap,
     categories: BALLOT_CATEGORIES,
   });
 }
@@ -72,6 +82,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "save");
+
+  // Heart a pick (one per category)
+  if (intent === "heartPick") {
+    const categoryKey = String(form.get("categoryKey"));
+    const nominee = String(form.get("nominee"));
+    await prisma.heartPick.upsert({
+      where: { userId_categoryKey: { userId: user.id, categoryKey } },
+      create: { userId: user.id, categoryKey, nominee },
+      update: { nominee },
+    });
+    return json<ActionData>({ ok: true });
+  }
+
+  // Unheart a pick
+  if (intent === "unheartPick") {
+    const categoryKey = String(form.get("categoryKey"));
+    await prisma.heartPick.deleteMany({
+      where: { userId: user.id, categoryKey },
+    });
+    return json<ActionData>({ ok: true });
+  }
 
   // Submit all saved picks at once (make them permanent)
   if (intent === "submitAll") {
@@ -361,14 +392,24 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Ballot() {
-  const { user, pickMap, betMap, savedMap, submittedMap, categories } =
-    useLoaderData<typeof loader>();
+  const {
+    user,
+    pickMap,
+    betMap,
+    savedMap,
+    submittedMap,
+    heartMap,
+    categories,
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const locked = Boolean(user?.lockedAt);
   const submit = useSubmit();
 
   // Optimistic UI for picks
   const [localPicks, setLocalPicks] = useState(pickMap);
+  // Heart picks state (categoryKey → nominee)
+  const [heartPicks, setHeartPicks] =
+    useState<Record<string, string>>(heartMap);
   // Bet amounts for each category
   const [betAmounts, setBetAmounts] = useState<Record<string, number>>(betMap);
   // Saved state for each category (temporary)
@@ -451,8 +492,9 @@ export default function Ballot() {
       setBetAmounts(betMap);
       setSavedPicks(savedMap);
       setSubmittedPicks(submittedMap);
+      setHeartPicks(heartMap);
     }
-  }, [user, pickMap, betMap, savedMap, submittedMap, submit]);
+  }, [user, pickMap, betMap, savedMap, submittedMap, heartMap, submit]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -665,6 +707,32 @@ export default function Ballot() {
 
     // Optimistic update
     setSavedPicks((prev) => ({ ...prev, [categoryKey]: false }));
+  };
+
+  const handleHeartPick = (categoryKey: string, nominee: string) => {
+    if (!user) {
+      window.location.href = "/join?redirectTo=/ballot";
+      return;
+    }
+    const isHearted = heartPicks[categoryKey] === nominee;
+    if (isHearted) {
+      setHeartPicks((prev) => {
+        const n = { ...prev };
+        delete n[categoryKey];
+        return n;
+      });
+      const formData = new FormData();
+      formData.append("intent", "unheartPick");
+      formData.append("categoryKey", categoryKey);
+      submit(formData, { method: "post", replace: true });
+    } else {
+      setHeartPicks((prev) => ({ ...prev, [categoryKey]: nominee }));
+      const formData = new FormData();
+      formData.append("intent", "heartPick");
+      formData.append("categoryKey", categoryKey);
+      formData.append("nominee", nominee);
+      submit(formData, { method: "post", replace: true });
+    }
   };
 
   // Calculate total potential winnings (unsubmitted picks only)
@@ -1103,7 +1171,7 @@ export default function Ballot() {
           {categories.map((c) => (
             <div
               key={c.key}
-              className="rounded-lg border border-gold-500/30 bg-black p-1"
+              className="rounded-lg border border-gold-500/30 bg-[#242424] p-1"
             >
               <div className="text-center py-2 border-b border-white/10 bg-zinc-900/40 rounded-t">
                 <h3 className="h2">{c.title}</h3>
@@ -1124,78 +1192,123 @@ export default function Ballot() {
                       ? calculateTotalReturn(betAmount, nominee.odds)
                       : 0;
 
+                  const isHearted = heartPicks[c.key] === nomineeStr;
+
                   return (
                     <div key={nomineeStr} className="space-y-2">
-                      <button
-                        onClick={() => handleSelect(c.key, nomineeStr)}
-                        disabled={
-                          locked || isSubmitted || (isSaved && !isSelected)
-                        }
-                        className={`w-full text-left flex justify-between items-center px-3 py-2 rounded text-[11px] md:text-xs transition-colors ${
-                          isSelected
-                            ? isSubmitted
-                              ? "bg-gold-500/20 text-gold-400 font-semibold border border-gold-500/40"
-                              : isSaved
-                              ? "bg-blue-500/20 text-blue-400 font-semibold border border-blue-500/40"
-                              : "bg-white/10 text-green-400 font-semibold"
-                            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                        } ${
-                          (locked || isSubmitted || (isSaved && !isSelected)) &&
-                          "cursor-not-allowed opacity-60"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>{nomineeStr}</span>
-                          {nominee.odds && (
-                            <span className="text-[11px] md:text-xs text-gold-400 font-mono">
-                              {formatOdds(nominee.odds)}
-                            </span>
+                      <div className="flex items-center gap-1.5">
+                        {/* Heart button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHeartPick(c.key, nomineeStr);
+                          }}
+                          className={`shrink-0 p-1.5 rounded transition-colors hover:bg-white/10 ${
+                            isHearted
+                              ? "text-red-500"
+                              : "text-zinc-500 hover:text-red-400"
+                          }`}
+                          aria-label={
+                            isHearted ? "Remove heart" : "Heart this pick"
+                          }
+                        >
+                          {isHearted ? (
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              />
+                            </svg>
                           )}
-                        </span>
-                        <span className="flex items-center gap-2">
-                          {isSelected && !isSaved && !isSubmitted && (
-                            <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
-                              Picked
-                            </span>
-                          )}
-                          {isSelected && isSaved && !isSubmitted && (
-                            <span className="text-xs uppercase tracking-wider text-blue-400 font-bold bg-blue-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                              Saved
-                            </span>
-                          )}
-                          {isSelected && isSubmitted && (
-                            <span className="text-xs uppercase tracking-wider text-gold-400 font-bold bg-gold-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
-                              </svg>
-                              Submitted
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                        </button>
+                        <button
+                          onClick={() => handleSelect(c.key, nomineeStr)}
+                          disabled={
+                            locked || isSubmitted || (isSaved && !isSelected)
+                          }
+                          className={`flex-1 text-left flex justify-between items-center px-3 py-2 rounded text-[11px] md:text-xs transition-colors ${
+                            isSelected
+                              ? isSubmitted
+                                ? "bg-gold-500/20 text-gold-400 font-semibold border border-gold-500/40"
+                                : isSaved
+                                ? "bg-blue-500/20 text-blue-400 font-semibold border border-blue-500/40"
+                                : "bg-white/10 text-green-400 font-semibold"
+                              : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                          } ${
+                            (locked ||
+                              isSubmitted ||
+                              (isSaved && !isSelected)) &&
+                            "cursor-not-allowed opacity-60"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{nomineeStr}</span>
+                            {nominee.odds && (
+                              <span className="text-[11px] md:text-xs text-gold-400 font-mono">
+                                {formatOdds(nominee.odds)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            {isSelected && !isSaved && !isSubmitted && (
+                              <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
+                                Picked
+                              </span>
+                            )}
+                            {isSelected && isSaved && !isSubmitted && (
+                              <span className="text-xs uppercase tracking-wider text-blue-400 font-bold bg-blue-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                                Saved
+                              </span>
+                            )}
+                            {isSelected && isSubmitted && (
+                              <span className="text-xs uppercase tracking-wider text-gold-400 font-bold bg-gold-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                  />
+                                </svg>
+                                Submitted
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </div>
 
                       {/* For nominees WITHOUT odds - show a simple picked state with remove option */}
                       {isSelected &&

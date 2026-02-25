@@ -19,8 +19,9 @@ model User {
   updatedAt             DateTime  @updatedAt
   lockedAt              DateTime?
 
-  picks  Pick[]
-  caches ExternalCache[]
+  picks      Pick[]
+  heartPicks HeartPick[]
+  caches     ExternalCache[]
 }
 
 model Pick {
@@ -33,6 +34,20 @@ model Pick {
   lockedAt    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryKey])
+  @@index([userId])
+}
+
+model HeartPick {
+  id          String   @id @default(cuid())
+  userId      String
+  categoryKey String
+  nominee     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
