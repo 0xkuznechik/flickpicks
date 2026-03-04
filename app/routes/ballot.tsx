@@ -28,6 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   let savedMap: Record<string, boolean> = {};
   let submittedMap: Record<string, boolean> = {};
   let heartMap: Record<string, string> = {};
+  let lockedOddsMap: Record<string, number | null> = {};
 
   // Only fetch picks if user is logged in
   if (user) {
@@ -37,6 +38,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         categoryKey: true,
         nominee: true,
         betAmount: true,
+        lockedOdds: true,
         savedAt: true,
         lockedAt: true,
       },
@@ -47,6 +49,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       betMap[p.categoryKey] = parseFloat(p.betAmount.toString());
       savedMap[p.categoryKey] = p.savedAt !== null;
       submittedMap[p.categoryKey] = p.lockedAt !== null;
+      if (p.lockedAt !== null) {
+        lockedOddsMap[p.categoryKey] = p.lockedOdds;
+      }
     }
 
     const hearts = await prisma.heartPick.findMany({
@@ -65,6 +70,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     savedMap,
     submittedMap,
     heartMap,
+    lockedOddsMap,
     categories: BALLOT_CATEGORIES,
   });
 }
@@ -136,6 +142,7 @@ export async function action({ request }: ActionFunctionArgs) {
         lockedAt: null,
         betAmount: { gt: 0 },
       },
+      select: { id: true, categoryKey: true, nominee: true },
     });
 
     if (picksToSubmit.length === 0) {
@@ -145,16 +152,22 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // Submit all saved picks by setting lockedAt
-    await prisma.pick.updateMany({
-      where: {
-        userId: user.id,
-        savedAt: { not: null },
-        lockedAt: null,
-        betAmount: { gt: 0 },
-      },
-      data: { lockedAt: new Date() },
-    });
+    // Lock each pick individually, capturing the current odds at submission time
+    const now = new Date();
+    await prisma.$transaction(
+      picksToSubmit.map((pick) => {
+        const category = BALLOT_CATEGORIES.find(
+          (c) => c.key === pick.categoryKey
+        );
+        const nominee = category?.nominees.find(
+          (n) => formatNominee(n) === pick.nominee
+        );
+        return prisma.pick.update({
+          where: { id: pick.id },
+          data: { lockedAt: now, lockedOdds: nominee?.odds ?? null },
+        });
+      })
+    );
 
     return redirect("/ballot");
   }
@@ -399,6 +412,7 @@ export default function Ballot() {
     savedMap,
     submittedMap,
     heartMap,
+    lockedOddsMap,
     categories,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
@@ -418,6 +432,9 @@ export default function Ballot() {
   // Submitted state for each category (permanent)
   const [submittedPicks, setSubmittedPicks] =
     useState<Record<string, boolean>>(submittedMap);
+  // Odds frozen at submission time
+  const [lockedOdds, setLockedOdds] =
+    useState<Record<string, number | null>>(lockedOddsMap);
   // Confirmation modal state
   const [showSubmitAllModal, setShowSubmitAllModal] = useState(false);
   // Refs for bet amount sections to detect clicks outside
@@ -493,8 +510,18 @@ export default function Ballot() {
       setSavedPicks(savedMap);
       setSubmittedPicks(submittedMap);
       setHeartPicks(heartMap);
+      setLockedOdds(lockedOddsMap);
     }
-  }, [user, pickMap, betMap, savedMap, submittedMap, heartMap, submit]);
+  }, [
+    user,
+    pickMap,
+    betMap,
+    savedMap,
+    submittedMap,
+    heartMap,
+    lockedOddsMap,
+    submit,
+  ]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -854,7 +881,7 @@ export default function Ballot() {
     setShowSubmitAllModal(false);
   };
 
-  // Get submitted picks with details
+  // Get submitted picks with details — uses odds frozen at submission time
   const getSubmittedPicks = () => {
     return categories
       .filter((category) => {
@@ -865,10 +892,7 @@ export default function Ballot() {
       .map((category) => {
         const selectedNominee = localPicks[category.key];
         const betAmount = betAmounts[category.key] || 0;
-        const nominee = category.nominees.find(
-          (n) => formatNominee(n) === selectedNominee
-        );
-        const odds = nominee?.odds || null;
+        const odds = lockedOdds[category.key] ?? null;
         const profit =
           odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
         const totalReturn =

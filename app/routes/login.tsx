@@ -34,17 +34,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const result = await login(parsed.data.email, parsed.data.password);
 
-  if (result.error === "unconfirmed") {
-    return json(
-      {
-        ok: false,
-        formError:
-          "Your account is awaiting confirmation. Please check your email.",
-      },
-      { status: 401 }
-    );
-  }
-
   if (!result.user) {
     return json(
       {
@@ -59,7 +48,11 @@ export async function action({ request }: ActionFunctionArgs) {
     return createUserSession(request, result.user.id, "/force-password-change");
   }
 
-  const redirectTo = String(form.get("redirectTo") ?? "/ballot");
+  const rawRedirect = String(form.get("redirectTo") ?? "");
+  const redirectTo =
+    rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/ballot";
   return createUserSession(request, result.user.id, redirectTo);
 }
 
@@ -133,11 +126,6 @@ export default function Login() {
             <button type="submit" className="btn btn-primary w-full">
               Continue
             </button>
-
-            <p className="small-muted">
-              Not production auth. Replace with OAuth/passwordless, add rate
-              limiting, and store secrets properly.
-            </p>
           </Form>
         </div>
       </div>

@@ -30,6 +30,7 @@ model Pick {
   categoryKey String
   nominee     String
   betAmount   Decimal   @default(0) @db.Decimal(10, 2)
+  lockedOdds  Int?
   savedAt     DateTime?
   lockedAt    DateTime?
   createdAt   DateTime  @default(now())

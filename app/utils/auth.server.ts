@@ -16,7 +16,7 @@ export async function getUser(request: Request) {
   if (!userId) return null;
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, lockedAt: true },
+    select: { id: true, email: true, lockedAt: true, isAdmin: true },
   });
 }
 

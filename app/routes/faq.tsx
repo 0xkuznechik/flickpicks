@@ -26,8 +26,10 @@ export default function FAQ() {
                 How does this work?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                Select a nominee in each category. Enter a bet amount. Lock your
-                pick. Locked picks cannot be changed.
+                You have a $1,000 budget to bet across 24 Oscar categories. Pick
+                a nominee in any category, enter a bet amount, and save your
+                picks. When you're ready, submit them all at once — submissions
+                are final. Winners are scored the night of the ceremony.
               </p>
             </div>
 
@@ -36,9 +38,12 @@ export default function FAQ() {
                 What are the odds?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                American betting odds. Negative numbers (e.g., -150) are
-                favorites: bet $150 to win $100. Positive numbers (e.g., +200)
-                are underdogs: bet $100 to win $200.
+                Odds are in American format. A negative number like{" "}
+                <span className="text-zinc-100">-150</span> means the nominee is
+                a favorite: bet $150 to profit $100. A positive number like{" "}
+                <span className="text-zinc-100">+300</span> means an underdog:
+                bet $100 to profit $300. The bigger the positive number, the
+                longer the odds — and the bigger the potential payout.
               </p>
             </div>
 
@@ -47,69 +52,44 @@ export default function FAQ() {
                 How do I make a pick?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                Go to Make Selections. Click a nominee. Enter bet amount. Click
-                "Lock This Pick". Pick is now committed.
+                Go to Make Selections. Click any nominee to choose them, then
+                enter a bet amount. Click "Save This Pick" to stage it for
+                submission — saved picks can still be adjusted. When you're
+                happy with everything, click "Submit All Saved Picks" to lock
+                them in permanently.
               </p>
             </div>
 
             <div>
               <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
-                Can I change a locked pick?
+                Can I change a submitted pick?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                No. Once locked, picks are final. You can make unlocked picks
-                anytime before locking.
+                No. Submitted picks are final and cannot be edited or removed.
+                You can revise saved picks as many times as you like before
+                hitting submit.
               </p>
             </div>
 
             <div>
               <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
-                What is the Portfolio page?
+                What are the heart picks?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                Shows all your locked picks. Displays total bet amount,
-                potential profit, and total return if all picks win.
+                The heart (♡) on each category is your personal rooting interest
+                — who you hope wins, regardless of where you put your money.
+                Hearts are just for fun, never affect scoring, and can be
+                changed anytime.
               </p>
             </div>
 
             <div>
               <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
-                Do I have to pick in every category?
+                Do I have to pick every category?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                No. Pick as many or few categories as you want. Only locked
-                picks with bet amounts count.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
-                What happens if I don't set a bet amount?
-              </h2>
-              <p className="h3 !text-sm md:!text-base">
-                You cannot lock a pick without a bet amount. The lock button is
-                disabled until you enter an amount greater than zero.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
-                Can I lock all my picks at once?
-              </h2>
-              <p className="h3 !text-sm md:!text-base">
-                Yes. The "Lock All Picks" button at the bottom of the ballot
-                locks all unlocked picks that have bet amounts. A confirmation
-                modal shows what will be locked.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
-                What is "Clear Unlocked Picks"?
-              </h2>
-              <p className="h3 !text-sm md:!text-base">
-                Deletes all unlocked selections and bet amounts. Locked picks
-                are not affected. Action cannot be undone.
+                No. Pick as many or as few as you like. Only submitted picks
+                count toward your score.
               </p>
             </div>
 
@@ -118,9 +98,10 @@ export default function FAQ() {
                 How is profit calculated?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                For favorites (negative odds): profit = bet × (100 / |odds|).
-                For underdogs (positive odds): profit = bet × (odds / 100).
-                Total return = bet + profit.
+                For favorites (negative odds): profit = bet × (100 ÷ |odds|). A
+                $150 bet at -150 profits $100, returning $250 total. For
+                underdogs (positive odds): profit = bet × (odds ÷ 100). A $100
+                bet at +300 profits $300, returning $400 total.
               </p>
             </div>
 
@@ -129,7 +110,8 @@ export default function FAQ() {
                 When are the Oscars?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                March 15, 2026. Lock deadline is March 13, 2026.
+                The ceremony is March 15, 2026. The submission deadline is March
+                13, 2026.
               </p>
             </div>
 
@@ -138,8 +120,8 @@ export default function FAQ() {
                 Is this real money?
               </h2>
               <p className="h3 !text-sm md:!text-base">
-                This is a demonstration application. No real money is exchanged.
-                Authentication is not production-ready.
+                No. This is a game between friends — no real money changes
+                hands.
               </p>
             </div>
           </div>

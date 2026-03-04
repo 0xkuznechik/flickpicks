@@ -10,6 +10,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     select: {
       id: true,
       email: true,
+      username: true,
       lockedAt: true,
       _count: { select: { picks: true } },
     },
@@ -63,7 +64,9 @@ export default function Leaderboard() {
               <tbody className="divide-y divide-white/10">
                 {users.map((u) => (
                   <tr key={u.id} className="text-zinc-200">
-                    <td className="h3 px-4 py-3">{u.email}</td>
+                    <td className="h3 px-4 py-3">
+                      {u.username ?? u.email.split("@")[0]}
+                    </td>
                     <td className="h3 px-4 py-3">{u._count.picks}</td>
                     <td className="h3 px-4 py-3 text-zinc-400">
                       {u.lockedAt ? new Date(u.lockedAt).toLocaleString() : "—"}

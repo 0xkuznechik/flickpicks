@@ -7,6 +7,14 @@ const initialUsers = [
   'user1@example.com',
   'user2@example.com',
   'admin@example.com',
+  'lets.jam@gmail.com',
+  'cindyjhlee@gmail.com',
+	'mrwasa19@gmail.com',
+	'janelle.myers90@gmail.com',
+	'kieran.aulak@gmail.com',
+	'cate@supinski.net',
+	'jeremygarbellano@gmail.com',
+	'chenkhuan@gmail.com',
 ];
 
 const standardPassword = 'password123';
@@ -23,7 +31,7 @@ async function seed() {
       create: {
         email,
         passwordHash: hashedPassword,
-        passwordMustBeChanged: false, // TODO: Change this to true when done.
+        passwordMustBeChanged: true,
         username: email.split('@')[0], // a default username
       },
     });
