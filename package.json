@@ -16,7 +16,8 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:seed": "node --experimental-specifier-resolution=node ./scripts/seed.mjs",
-    "admin:reset-user": "node scripts/reset-user.mjs"
+    "admin:reset-user": "node scripts/reset-user.mjs",
+    "admin:reset-password": "node scripts/reset-password.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
