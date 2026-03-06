@@ -1,7 +1,8 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { Link, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import { getUser } from "../utils/auth.server";
+import { Header } from "../components/Header";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
@@ -13,199 +14,114 @@ export default function FAQ() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      {/* Sticky Header Container */}
-      <div className="sticky top-0 z-50 bg-black">
-        {/* Navigation */}
-        <nav className="border-b border-white/10 bg-black py-4">
-          <div className="container-pad flex items-center justify-between">
-            <div className="flex-1"></div>
-            <div className="flex items-center gap-3">
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                FLICK
-              </span>
-              <img
-                src="/images/oscarspoollogo.png"
-                alt="Logo"
-                className="h-10 w-auto"
-              />
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                PICKS
-              </span>
-            </div>
-            <div className="flex-1 flex justify-end gap-4 items-center">
-              {!user && (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    to="/join"
-                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-              {user && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs text-zinc-400">{user.email}</span>
-                  </div>
-                  <Link
-                    to="/logout"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
-                  >
-                    Logout
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
-            <Link to="/" className="hover:text-zinc-200">
-              Home
-            </Link>
-            <Link to="/ballot" className="hover:text-zinc-200">
-              Make Selections
-            </Link>
-            <Link to="/portfolio" className="hover:text-zinc-200">
-              Portfolio
-            </Link>
-            <Link to="/faq" className="text-gold-400 hover:text-gold-300">
-              FAQ
-            </Link>
-          </div>
-        </nav>
-      </div>
+      <Header user={user} currentPage="faq" />
 
       <main className="container-pad py-12">
         <div className="max-w-3xl mx-auto">
-          <h1 className="font-[var(--font-inter)] text-4xl font-bold text-white mb-12">
-            FAQ
-          </h1>
+          <h1 className="h1 mb-12 !text-3xl md:!text-4xl">FAQ</h1>
 
-          <div className="space-y-8 text-zinc-300">
+          <div className="space-y-12 text-zinc-300">
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
                 How does this work?
               </h2>
-              <p>
-                Select a nominee in each category. Enter a bet amount. Lock your
-                pick. Locked picks cannot be changed.
+              <p className="h3 !text-sm md:!text-base">
+                You have a $1,000 budget to bet across 24 Oscar categories. Pick
+                a nominee in any category, enter a bet amount, and save your
+                picks. When you're ready, submit them all at once — submissions
+                are final. Winners are scored the night of the ceremony.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
                 What are the odds?
               </h2>
-              <p>
-                American betting odds. Negative numbers (e.g., -150) are
-                favorites: bet $150 to win $100. Positive numbers (e.g., +200)
-                are underdogs: bet $100 to win $200.
+              <p className="h3 !text-sm md:!text-base">
+                Odds are in American format. A negative number like{" "}
+                <span className="text-zinc-100">-150</span> means the nominee is
+                a favorite: bet $150 to profit $100. A positive number like{" "}
+                <span className="text-zinc-100">+300</span> means an underdog:
+                bet $100 to profit $300. The bigger the positive number, the
+                longer the odds — and the bigger the potential payout.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
                 How do I make a pick?
               </h2>
-              <p>
-                Go to Make Selections. Click a nominee. Enter bet amount. Click
-                "Lock This Pick". Pick is now committed.
+              <p className="h3 !text-sm md:!text-base">
+                Go to Make Selections. Click any nominee to choose them, then
+                enter a bet amount. Click "Save This Pick" to stage it for
+                submission — saved picks can still be adjusted. When you're
+                happy with everything, click "Submit All Saved Picks" to lock
+                them in permanently.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                Can I change a locked pick?
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
+                Can I change a submitted pick?
               </h2>
-              <p>
-                No. Once locked, picks are final. You can make unlocked picks
-                anytime before locking.
+              <p className="h3 !text-sm md:!text-base">
+                No. Submitted picks are final and cannot be edited or removed.
+                You can revise saved picks as many times as you like before
+                hitting submit.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                What is the Portfolio page?
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
+                What are the heart picks?
               </h2>
-              <p>
-                Shows all your locked picks. Displays total bet amount,
-                potential profit, and total return if all picks win.
+              <p className="h3 !text-sm md:!text-base">
+                The heart (♡) on each category is your personal rooting interest
+                — who you hope wins, regardless of where you put your money.
+                Hearts are just for fun, never affect scoring, and can be
+                changed anytime.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                Do I have to pick in every category?
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
+                Do I have to pick every category?
               </h2>
-              <p>
-                No. Pick as many or few categories as you want. Only locked
-                picks with bet amounts count.
+              <p className="h3 !text-sm md:!text-base">
+                No. Pick as many or as few as you like. Only submitted picks
+                count toward your score.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                What happens if I don't set a bet amount?
-              </h2>
-              <p>
-                You cannot lock a pick without a bet amount. The lock button is
-                disabled until you enter an amount greater than zero.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                Can I lock all my picks at once?
-              </h2>
-              <p>
-                Yes. The "Lock All Picks" button at the bottom of the ballot
-                locks all unlocked picks that have bet amounts. A confirmation
-                modal shows what will be locked.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-white mb-2">
-                What is "Clear Unlocked Picks"?
-              </h2>
-              <p>
-                Deletes all unlocked selections and bet amounts. Locked picks
-                are not affected. Action cannot be undone.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
                 How is profit calculated?
               </h2>
-              <p>
-                For favorites (negative odds): profit = bet × (100 / |odds|).
-                For underdogs (positive odds): profit = bet × (odds / 100).
-                Total return = bet + profit.
+              <p className="h3 !text-sm md:!text-base">
+                For favorites (negative odds): profit = bet × (100 ÷ |odds|). A
+                $150 bet at -150 profits $100, returning $250 total. For
+                underdogs (positive odds): profit = bet × (odds ÷ 100). A $100
+                bet at +300 profits $300, returning $400 total.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
                 When are the Oscars?
               </h2>
-              <p>March 15, 2026. Lock deadline is March 13, 2026.</p>
+              <p className="h3 !text-sm md:!text-base">
+                The ceremony is March 15, 2026. The submission deadline is March
+                13, 2026.
+              </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="h2 mb-2 text-[#FFDA71] !text-lg md:!text-xl">
                 Is this real money?
               </h2>
-              <p>
-                This is a demonstration application. No real money is exchanged.
-                Authentication is not production-ready.
+              <p className="h3 !text-sm md:!text-base">
+                No. This is a game between friends — no real money changes
+                hands.
               </p>
             </div>
           </div>

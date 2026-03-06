@@ -2,11 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, useActionData, useSearchParams } from "@remix-run/react";
 import { z } from "zod";
-import {
-  createUserSession,
-  getUserId,
-  loginOrRegister,
-} from "../utils/auth.server";
+import { createUserSession, getUser, login } from "../utils/auth.server";
 
 const Schema = z.object({
   email: z.string().email("Enter a valid email").max(320),
@@ -21,8 +17,8 @@ type ActionData =
   | { ok: false; formError: string };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await getUserId(request);
-  if (userId) throw redirect("/ballot");
+  const user = await getUser(request);
+  if (user) throw redirect("/ballot");
   return json({});
 }
 
@@ -36,18 +32,28 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ ok: false, fieldErrors }, { status: 400 });
   }
 
-  const result = await loginOrRegister(parsed.data.email, parsed.data.password);
+  const result = await login(parsed.data.email, parsed.data.password);
+
   if (!result.user) {
     return json(
       {
         ok: false,
-        formError: "Invalid email/password for an existing account",
+        formError: "Invalid email or password.",
       },
       { status: 400 }
     );
   }
 
-  return createUserSession(request, result.user.id, "/ballot");
+  if (result.user.passwordMustBeChanged) {
+    return createUserSession(request, result.user.id, "/force-password-change");
+  }
+
+  const rawRedirect = String(form.get("redirectTo") ?? "");
+  const redirectTo =
+    rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/ballot";
+  return createUserSession(request, result.user.id, redirectTo);
 }
 
 export default function Login() {
@@ -61,8 +67,7 @@ export default function Login() {
         <div className="card p-6 md:p-8">
           <h1 className="text-5xl font-semibold">Log in</h1>
           <p className="mt-2 text-zinc-300">
-            This skeleton auto-creates an account the first time you log in with
-            a new email.
+            Enter your credentials to access your ballot.
           </p>
 
           <Form method="post" className="mt-6 space-y-4">
@@ -121,11 +126,6 @@ export default function Login() {
             <button type="submit" className="btn btn-primary w-full">
               Continue
             </button>
-
-            <p className="small-muted">
-              Not production auth. Replace with OAuth/passwordless, add rate
-              limiting, and store secrets properly.
-            </p>
           </Form>
         </div>
       </div>

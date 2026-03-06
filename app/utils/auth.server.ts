@@ -16,7 +16,7 @@ export async function getUser(request: Request) {
   if (!userId) return null;
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, lockedAt: true },
+    select: { id: true, email: true, lockedAt: true, isAdmin: true },
   });
 }
 
@@ -26,27 +26,36 @@ export async function requireUser(request: Request) {
   return user;
 }
 
-export async function loginOrRegister(email: string, password: string) {
+export async function login(
+  email: string,
+  password: string
+): Promise<{
+  user: { id: string; email: string; passwordMustBeChanged: boolean } | null;
+  error?: string;
+}> {
   const normalized = email.trim().toLowerCase();
-  const existing = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: { email: normalized },
   });
 
-  if (!existing) {
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
-      data: { email: normalized, passwordHash },
-      select: { id: true, email: true },
-    });
-    return { user, created: true };
+  if (!existingUser) {
+    return { user: null };
   }
 
-  const ok = await bcrypt.compare(password, existing.passwordHash);
-  if (!ok) return { user: null, created: false };
+  const isPasswordValid = await bcrypt.compare(
+    password,
+    existingUser.passwordHash
+  );
+  if (!isPasswordValid) {
+    return { user: null };
+  }
 
   return {
-    user: { id: existing.id, email: existing.email },
-    created: false,
+    user: {
+      id: existingUser.id,
+      email: existingUser.email,
+      passwordMustBeChanged: existingUser.passwordMustBeChanged,
+    },
   };
 }
 

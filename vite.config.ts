@@ -3,9 +3,4 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [remix()],
-  server: {
-    port: 5173,
-    strictPort: true,
-    host: true,
-  },
 });

@@ -7,7 +7,7 @@ import {
   useLoaderData,
   useSubmit,
 } from "@remix-run/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { BALLOT_CATEGORIES, formatNominee } from "../lib/ballot-data";
 import {
   formatOdds,
@@ -16,13 +16,19 @@ import {
 } from "../lib/betting-utils";
 import { prisma } from "../utils/db.server";
 import { getUser } from "../utils/auth.server";
+import { Header } from "../components/Header";
+
+const MAX_BUDGET = 1000;
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
 
   let pickMap: Record<string, string> = {};
   let betMap: Record<string, number> = {};
-  let lockedMap: Record<string, boolean> = {};
+  let savedMap: Record<string, boolean> = {};
+  let submittedMap: Record<string, boolean> = {};
+  let heartMap: Record<string, string> = {};
+  let lockedOddsMap: Record<string, number | null> = {};
 
   // Only fetch picks if user is logged in
   if (user) {
@@ -32,6 +38,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         categoryKey: true,
         nominee: true,
         betAmount: true,
+        lockedOdds: true,
+        savedAt: true,
         lockedAt: true,
       },
     });
@@ -39,7 +47,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
     for (const p of picks) {
       pickMap[p.categoryKey] = p.nominee;
       betMap[p.categoryKey] = parseFloat(p.betAmount.toString());
-      lockedMap[p.categoryKey] = p.lockedAt !== null;
+      savedMap[p.categoryKey] = p.savedAt !== null;
+      submittedMap[p.categoryKey] = p.lockedAt !== null;
+      if (p.lockedAt !== null) {
+        lockedOddsMap[p.categoryKey] = p.lockedOdds;
+      }
+    }
+
+    const hearts = await prisma.heartPick.findMany({
+      where: { userId: user.id },
+      select: { categoryKey: true, nominee: true },
+    });
+    for (const h of hearts) {
+      heartMap[h.categoryKey] = h.nominee;
     }
   }
 
@@ -47,7 +67,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     user,
     pickMap,
     betMap,
-    lockedMap,
+    savedMap,
+    submittedMap,
+    heartMap,
+    lockedOddsMap,
     categories: BALLOT_CATEGORIES,
   });
 }
@@ -66,51 +89,184 @@ export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "save");
 
-  // Lock all picks at once
-  if (intent === "lockAll") {
-    // Get all unlocked picks with bet amounts
-    const picksToLock = await prisma.pick.findMany({
-      where: {
-        userId: user.id,
-        lockedAt: null,
-        betAmount: { gt: 0 },
-      },
+  // Heart a pick (one per category)
+  if (intent === "heartPick") {
+    const categoryKey = String(form.get("categoryKey"));
+    const nominee = String(form.get("nominee"));
+    await prisma.heartPick.upsert({
+      where: { userId_categoryKey: { userId: user.id, categoryKey } },
+      create: { userId: user.id, categoryKey, nominee },
+      update: { nominee },
     });
+    return json<ActionData>({ ok: true });
+  }
 
-    if (picksToLock.length === 0) {
+  // Unheart a pick
+  if (intent === "unheartPick") {
+    const categoryKey = String(form.get("categoryKey"));
+    await prisma.heartPick.deleteMany({
+      where: { userId: user.id, categoryKey },
+    });
+    return json<ActionData>({ ok: true });
+  }
+
+  // Submit all saved picks at once (make them permanent)
+  if (intent === "submitAll") {
+    // Check total budget before submitting
+    const allPicks = await prisma.pick.findMany({
+      where: { userId: user.id },
+      select: { betAmount: true },
+    });
+    const totalBet = allPicks.reduce(
+      (sum, p) => sum + parseFloat(p.betAmount.toString()),
+      0
+    );
+
+    if (totalBet > MAX_BUDGET) {
       return json<ActionData>(
-        { ok: false, message: "No picks with bet amounts to lock." },
+        {
+          ok: false,
+          message: `Cannot submit: Your total bets ($${totalBet.toFixed(
+            2
+          )}) exceed the $${MAX_BUDGET} limit. Please adjust your bet amounts.`,
+        },
         { status: 400 }
       );
     }
 
-    // Lock all picks
-    await prisma.pick.updateMany({
+    // Get all saved but not yet submitted picks
+    const picksToSubmit = await prisma.pick.findMany({
       where: {
         userId: user.id,
+        savedAt: { not: null },
         lockedAt: null,
         betAmount: { gt: 0 },
       },
-      data: { lockedAt: new Date() },
+      select: { id: true, categoryKey: true, nominee: true },
     });
 
-    return redirect("/portfolio");
+    if (picksToSubmit.length === 0) {
+      return json<ActionData>(
+        { ok: false, message: "No saved picks to submit." },
+        { status: 400 }
+      );
+    }
+
+    // Lock each pick individually, capturing the current odds at submission time
+    const now = new Date();
+    await prisma.$transaction(
+      picksToSubmit.map((pick) => {
+        const category = BALLOT_CATEGORIES.find(
+          (c) => c.key === pick.categoryKey
+        );
+        const nominee = category?.nominees.find(
+          (n) => formatNominee(n) === pick.nominee
+        );
+        return prisma.pick.update({
+          where: { id: pick.id },
+          data: { lockedAt: now, lockedOdds: nominee?.odds ?? null },
+        });
+      })
+    );
+
+    return redirect("/ballot");
   }
 
-  // Clear all unlocked picks
-  if (intent === "clearUnlocked") {
+  // Clear all unsaved and unsubmitted picks
+  if (intent === "clearUnsaved") {
     await prisma.pick.deleteMany({
       where: {
         userId: user.id,
-        lockedAt: null,
+        savedAt: null, // Only clear picks that haven't been saved
+        lockedAt: null, // Only clear picks that haven't been submitted
       },
     });
 
     return redirect("/ballot");
   }
 
-  // Lock individual pick
-  if (intent === "lockPick") {
+  // Delete single unsaved pick
+  if (intent === "deletePick") {
+    const categoryKey = String(form.get("categoryKey"));
+
+    // Only delete if not saved and not submitted
+    const pick = await prisma.pick.findUnique({
+      where: {
+        userId_categoryKey: { userId: user.id, categoryKey },
+      },
+      select: { savedAt: true, lockedAt: true },
+    });
+
+    if (pick && !pick.savedAt && !pick.lockedAt) {
+      await prisma.pick.delete({
+        where: {
+          userId_categoryKey: { userId: user.id, categoryKey },
+        },
+      });
+    }
+
+    return json<ActionData>({ ok: true });
+  }
+
+  // Save individual pick (temporary)
+  if (intent === "savePick") {
+    const categoryKey = String(form.get("categoryKey"));
+
+    // Check total budget
+    const allPicks = await prisma.pick.findMany({
+      where: { userId: user.id },
+      select: { betAmount: true },
+    });
+    const totalBet = allPicks.reduce(
+      (sum, p) => sum + parseFloat(p.betAmount.toString()),
+      0
+    );
+
+    if (totalBet > MAX_BUDGET) {
+      return json<ActionData>(
+        {
+          ok: false,
+          message: `Budget exceeded. Your total bets ($${totalBet.toFixed(
+            2
+          )}) exceed the $${MAX_BUDGET} limit.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if pick exists
+    const pick = await prisma.pick.findUnique({
+      where: {
+        userId_categoryKey: { userId: user.id, categoryKey },
+      },
+    });
+
+    if (!pick) {
+      return json<ActionData>(
+        { ok: false, message: "Pick not found." },
+        { status: 400 }
+      );
+    }
+
+    if (pick.lockedAt) {
+      return json<ActionData>(
+        { ok: false, message: "Pick is already submitted." },
+        { status: 400 }
+      );
+    }
+
+    await prisma.pick.update({
+      where: {
+        userId_categoryKey: { userId: user.id, categoryKey },
+      },
+      data: { savedAt: new Date() },
+    });
+
+    return json<ActionData>({ ok: true });
+  }
+
+  // Unsave individual pick
+  if (intent === "unsavePick") {
     const categoryKey = String(form.get("categoryKey"));
     // Check if pick exists
     const pick = await prisma.pick.findUnique({
@@ -128,7 +284,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (pick.lockedAt) {
       return json<ActionData>(
-        { ok: false, message: "Pick is already locked." },
+        { ok: false, message: "Cannot unsave a submitted pick." },
         { status: 400 }
       );
     }
@@ -137,7 +293,7 @@ export async function action({ request }: ActionFunctionArgs) {
       where: {
         userId_categoryKey: { userId: user.id, categoryKey },
       },
-      data: { lockedAt: new Date() },
+      data: { savedAt: null },
     });
 
     return json<ActionData>({ ok: true });
@@ -147,6 +303,32 @@ export async function action({ request }: ActionFunctionArgs) {
   if (intent === "saveBetAmount") {
     const categoryKey = String(form.get("categoryKey"));
     const betAmount = parseFloat(String(form.get("betAmount") ?? "0"));
+
+    // Check total budget with new bet amount
+    const allPicks = await prisma.pick.findMany({
+      where: {
+        userId: user.id,
+        categoryKey: { not: categoryKey },
+      },
+      select: { betAmount: true },
+    });
+    const otherBetsTotal = allPicks.reduce(
+      (sum, p) => sum + parseFloat(p.betAmount.toString()),
+      0
+    );
+    const newTotal = otherBetsTotal + betAmount;
+
+    if (newTotal > MAX_BUDGET) {
+      return json<ActionData>(
+        {
+          ok: false,
+          message: `Budget exceeded. This bet would bring your total to $${newTotal.toFixed(
+            2
+          )}, which exceeds the $${MAX_BUDGET} limit.`,
+        },
+        { status: 400 }
+      );
+    }
 
     // Check if pick is locked
     const pick = await prisma.pick.findUnique({
@@ -223,21 +405,42 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Ballot() {
-  const { user, pickMap, betMap, lockedMap, categories } =
-    useLoaderData<typeof loader>();
+  const {
+    user,
+    pickMap,
+    betMap,
+    savedMap,
+    submittedMap,
+    heartMap,
+    lockedOddsMap,
+    categories,
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const locked = Boolean(user?.lockedAt);
   const submit = useSubmit();
 
   // Optimistic UI for picks
   const [localPicks, setLocalPicks] = useState(pickMap);
+  // Heart picks state (categoryKey → nominee)
+  const [heartPicks, setHeartPicks] =
+    useState<Record<string, string>>(heartMap);
   // Bet amounts for each category
   const [betAmounts, setBetAmounts] = useState<Record<string, number>>(betMap);
-  // Locked state for each category
-  const [lockedPicks, setLockedPicks] =
-    useState<Record<string, boolean>>(lockedMap);
+  // Saved state for each category (temporary)
+  const [savedPicks, setSavedPicks] =
+    useState<Record<string, boolean>>(savedMap);
+  // Submitted state for each category (permanent)
+  const [submittedPicks, setSubmittedPicks] =
+    useState<Record<string, boolean>>(submittedMap);
+  // Odds frozen at submission time
+  const [lockedOdds, setLockedOdds] =
+    useState<Record<string, number | null>>(lockedOddsMap);
   // Confirmation modal state
-  const [showLockAllModal, setShowLockAllModal] = useState(false);
+  const [showSubmitAllModal, setShowSubmitAllModal] = useState(false);
+  // Refs for bet amount sections to detect clicks outside
+  const betSectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Flash message state
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
   // Load from localStorage if not logged in
   useEffect(() => {
@@ -304,26 +507,100 @@ export default function Ballot() {
 
       setLocalPicks(pickMap);
       setBetAmounts(betMap);
-      setLockedPicks(lockedMap);
+      setSavedPicks(savedMap);
+      setSubmittedPicks(submittedMap);
+      setHeartPicks(heartMap);
+      setLockedOdds(lockedOddsMap);
     }
-  }, [user, pickMap, betMap, lockedMap, submit]);
+  }, [
+    user,
+    pickMap,
+    betMap,
+    savedMap,
+    submittedMap,
+    heartMap,
+    lockedOddsMap,
+    submit,
+  ]);
 
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && showLockAllModal) {
-        setShowLockAllModal(false);
+      if (e.key === "Escape" && showSubmitAllModal) {
+        setShowSubmitAllModal(false);
       }
     };
 
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [showLockAllModal]);
+  }, [showSubmitAllModal]);
+
+  // Handle clicks outside bet amount sections
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check each selected category with a bet section
+      Object.keys(localPicks).forEach((categoryKey) => {
+        const betSection = betSectionRefs.current[categoryKey];
+        const isSaved = savedPicks[categoryKey];
+
+        // If bet section exists, click is outside it, and not saved
+        if (
+          betSection &&
+          !betSection.contains(event.target as Node) &&
+          !isSaved
+        ) {
+          // Deselect the nominee locally using functional update to avoid race conditions
+          setLocalPicks((prev) => {
+            const newPicks = { ...prev };
+            delete newPicks[categoryKey];
+            return newPicks;
+          });
+
+          // Also clear bet amount
+          setBetAmounts((prev) => {
+            const newBets = { ...prev };
+            delete newBets[categoryKey];
+            return newBets;
+          });
+
+          // Clear the ref
+          betSectionRefs.current[categoryKey] = null;
+
+          // If not logged in, update localStorage using updated state
+          if (!user && typeof window !== "undefined") {
+            // Use functional updates to get latest state
+            setLocalPicks((currentPicks) => {
+              const newPicks = { ...currentPicks };
+              localStorage.setItem("guestPicks", JSON.stringify(newPicks));
+              return currentPicks;
+            });
+            setBetAmounts((currentBets) => {
+              const newBets = { ...currentBets };
+              localStorage.setItem("guestBets", JSON.stringify(newBets));
+              return currentBets;
+            });
+          } else if (user) {
+            // If logged in, delete the unsaved pick from server
+            const formData = new FormData();
+            formData.append("intent", "deletePick");
+            formData.append("categoryKey", categoryKey);
+            submit(formData, { method: "post", replace: true });
+          }
+        }
+      });
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [localPicks, betAmounts, savedPicks, user, submit]);
 
   const handleSelect = (categoryKey: string, nominee: string) => {
-    // Check if this specific pick is locked
-    if (lockedPicks[categoryKey]) return;
+    // Check if this specific pick is submitted (permanent)
+    if (submittedPicks[categoryKey]) return;
     if (locked) return; // Global ballot lock
+
+    // Check if this category already has a saved pick - if so, don't allow changing
+    if (savedPicks[categoryKey]) return;
 
     const newPicks = { ...localPicks, [categoryKey]: nominee };
     setLocalPicks(newPicks);
@@ -344,13 +621,58 @@ export default function Ballot() {
 
   const handleBetAmountChange = (categoryKey: string, amount: string) => {
     const numAmount = parseFloat(amount) || 0;
-    setBetAmounts((prev) => ({ ...prev, [categoryKey]: numAmount }));
+
+    // Calculate total if this bet were applied
+    const totalWithNewBet = categories.reduce((sum, category) => {
+      if (category.key === categoryKey) {
+        return sum + numAmount;
+      }
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    // Only update if it doesn't exceed budget
+    if (totalWithNewBet <= MAX_BUDGET) {
+      setBetAmounts((prev) => ({ ...prev, [categoryKey]: numAmount }));
+    } else {
+      // Show flash message
+      setFlashMessage("Out of budget!");
+      setTimeout(() => setFlashMessage(null), 2000);
+    }
   };
 
   const handleBetAmountBlur = (categoryKey: string, nominee: string) => {
+    const betAmount = betAmounts[categoryKey] || 0;
+
+    // If bet amount is 0, deselect the nominee
+    if (betAmount === 0) {
+      const newPicks = { ...localPicks };
+      delete newPicks[categoryKey];
+      setLocalPicks(newPicks);
+
+      // If not logged in, update localStorage
+      if (!user && typeof window !== "undefined") {
+        localStorage.setItem("guestPicks", JSON.stringify(newPicks));
+      }
+      return;
+    }
+
+    // Check if total exceeds budget
+    const totalBet = categories.reduce((sum, category) => {
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    if (totalBet > MAX_BUDGET) {
+      alert(
+        `Your total bets ($${totalBet.toFixed(
+          2
+        )}) exceed your budget of $${MAX_BUDGET}. Please adjust your bet amounts.`
+      );
+      return;
+    }
+
     const newBets = {
       ...betAmounts,
-      [categoryKey]: betAmounts[categoryKey] || 0,
+      [categoryKey]: betAmount,
     };
 
     // If not logged in, save to localStorage
@@ -364,11 +686,41 @@ export default function Ballot() {
     formData.append("intent", "saveBetAmount");
     formData.append("categoryKey", categoryKey);
     formData.append("nominee", nominee);
-    formData.append("betAmount", String(betAmounts[categoryKey] || 0));
+    formData.append("betAmount", String(betAmount));
     submit(formData, { method: "post", replace: true });
   };
 
-  const handleLockPick = (categoryKey: string) => {
+  const handleSavePick = (categoryKey: string) => {
+    // If not logged in, redirect to sign up
+    if (!user) {
+      window.location.href = "/join?redirectTo=/ballot";
+      return;
+    }
+
+    // Check if total exceeds budget
+    const totalBet = categories.reduce((sum, category) => {
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    if (totalBet > MAX_BUDGET) {
+      alert(
+        `Your total bets ($${totalBet.toFixed(
+          2
+        )}) exceed your budget of $${MAX_BUDGET}. Please adjust your bet amounts before saving.`
+      );
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("intent", "savePick");
+    formData.append("categoryKey", categoryKey);
+    submit(formData, { method: "post", replace: true });
+
+    // Optimistic update
+    setSavedPicks((prev) => ({ ...prev, [categoryKey]: true }));
+  };
+
+  const handleUnsavePick = (categoryKey: string) => {
     // If not logged in, redirect to sign up
     if (!user) {
       window.location.href = "/join?redirectTo=/ballot";
@@ -376,20 +728,46 @@ export default function Ballot() {
     }
 
     const formData = new FormData();
-    formData.append("intent", "lockPick");
+    formData.append("intent", "unsavePick");
     formData.append("categoryKey", categoryKey);
     submit(formData, { method: "post", replace: true });
 
     // Optimistic update
-    setLockedPicks((prev) => ({ ...prev, [categoryKey]: true }));
+    setSavedPicks((prev) => ({ ...prev, [categoryKey]: false }));
   };
 
-  // Calculate total potential winnings (unlocked picks only)
+  const handleHeartPick = (categoryKey: string, nominee: string) => {
+    if (!user) {
+      window.location.href = "/join?redirectTo=/ballot";
+      return;
+    }
+    const isHearted = heartPicks[categoryKey] === nominee;
+    if (isHearted) {
+      setHeartPicks((prev) => {
+        const n = { ...prev };
+        delete n[categoryKey];
+        return n;
+      });
+      const formData = new FormData();
+      formData.append("intent", "unheartPick");
+      formData.append("categoryKey", categoryKey);
+      submit(formData, { method: "post", replace: true });
+    } else {
+      setHeartPicks((prev) => ({ ...prev, [categoryKey]: nominee }));
+      const formData = new FormData();
+      formData.append("intent", "heartPick");
+      formData.append("categoryKey", categoryKey);
+      formData.append("nominee", nominee);
+      submit(formData, { method: "post", replace: true });
+    }
+  };
+
+  // Calculate total potential winnings (unsubmitted picks only)
   const calculateTotalPotentialWinnings = () => {
     let total = 0;
     categories.forEach((category) => {
-      const isLocked = lockedPicks[category.key];
-      if (isLocked) return; // Skip locked picks
+      const isSubmitted = submittedPicks[category.key];
+      if (isSubmitted) return; // Skip submitted picks
 
       const selectedNominee = localPicks[category.key];
       const betAmount = betAmounts[category.key] || 0;
@@ -406,12 +784,12 @@ export default function Ballot() {
     return total;
   };
 
-  // Calculate total bet amount across unlocked selections only
+  // Calculate total bet amount across unsubmitted selections only
   const calculateTotalSelectionAmount = () => {
     let total = 0;
     categories.forEach((category) => {
-      const isLocked = lockedPicks[category.key];
-      if (isLocked) return; // Skip locked picks
+      const isSubmitted = submittedPicks[category.key];
+      if (isSubmitted) return; // Skip submitted picks
 
       const betAmount = betAmounts[category.key] || 0;
       total += betAmount;
@@ -419,12 +797,12 @@ export default function Ballot() {
     return total;
   };
 
-  // Calculate total return across unlocked selections only
+  // Calculate total return across unsubmitted selections only
   const calculateTotalReturnAmount = () => {
     let total = 0;
     categories.forEach((category) => {
-      const isLocked = lockedPicks[category.key];
-      if (isLocked) return; // Skip locked picks
+      const isSubmitted = submittedPicks[category.key];
+      if (isSubmitted) return; // Skip submitted picks
 
       const selectedNominee = localPicks[category.key];
       const betAmount = betAmounts[category.key] || 0;
@@ -441,14 +819,15 @@ export default function Ballot() {
     return total;
   };
 
-  // Get picks that will be locked (unlocked picks with bet amounts)
-  const getPicksToLock = () => {
+  // Get picks that will be submitted (saved but not yet submitted picks)
+  const getPicksToSubmit = () => {
     return categories
       .filter((category) => {
         const selectedNominee = localPicks[category.key];
         const betAmount = betAmounts[category.key] || 0;
-        const isLocked = lockedPicks[category.key];
-        return selectedNominee && betAmount > 0 && !isLocked;
+        const isSaved = savedPicks[category.key];
+        const isSubmitted = submittedPicks[category.key];
+        return selectedNominee && betAmount > 0 && isSaved && !isSubmitted;
       })
       .map((category) => {
         const selectedNominee = localPicks[category.key];
@@ -474,144 +853,359 @@ export default function Ballot() {
       });
   };
 
-  const handleLockAll = () => {
+  const handleSubmitAll = () => {
     // If not logged in, redirect to sign up
     if (!user) {
       window.location.href = "/join?redirectTo=/ballot";
       return;
     }
 
+    // Final check before submission
+    const totalBet = categories.reduce((sum, category) => {
+      return sum + (betAmounts[category.key] || 0);
+    }, 0);
+
+    if (totalBet > MAX_BUDGET) {
+      alert(
+        `Cannot submit: Your total bets ($${totalBet.toFixed(
+          2
+        )}) exceed your budget of $${MAX_BUDGET}.`
+      );
+      setShowSubmitAllModal(false);
+      return;
+    }
+
     const formData = new FormData();
-    formData.append("intent", "lockAll");
+    formData.append("intent", "submitAll");
     submit(formData, { method: "post" });
-    setShowLockAllModal(false);
+    setShowSubmitAllModal(false);
   };
+
+  // Get submitted picks with details — uses odds frozen at submission time
+  const getSubmittedPicks = () => {
+    return categories
+      .filter((category) => {
+        const selectedNominee = localPicks[category.key];
+        const isSubmitted = submittedPicks[category.key];
+        return selectedNominee && isSubmitted;
+      })
+      .map((category) => {
+        const selectedNominee = localPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
+        const odds = lockedOdds[category.key] ?? null;
+        const profit =
+          odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
+        const totalReturn =
+          odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0;
+
+        return {
+          categoryKey: category.key,
+          categoryTitle: category.title,
+          nominee: selectedNominee,
+          odds,
+          betAmount,
+          profit,
+          totalReturn,
+        };
+      });
+  };
+
+  // Get pending/saved picks with details
+  const getPendingPicks = () => {
+    return categories
+      .filter((category) => {
+        const selectedNominee = localPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
+        const isSaved = savedPicks[category.key];
+        const isSubmitted = submittedPicks[category.key];
+        // Only show picks that are saved AND have a bet amount
+        return selectedNominee && isSaved && betAmount > 0 && !isSubmitted;
+      })
+      .map((category) => {
+        const selectedNominee = localPicks[category.key];
+        const betAmount = betAmounts[category.key] || 0;
+        const isSaved = savedPicks[category.key];
+        const nominee = category.nominees.find(
+          (n) => formatNominee(n) === selectedNominee
+        );
+        const odds = nominee?.odds || null;
+        const profit =
+          odds && betAmount > 0 ? calculateProfit(betAmount, odds) : 0;
+        const totalReturn =
+          odds && betAmount > 0 ? calculateTotalReturn(betAmount, odds) : 0;
+
+        return {
+          categoryKey: category.key,
+          categoryTitle: category.title,
+          nominee: selectedNominee,
+          odds,
+          betAmount,
+          profit,
+          totalReturn,
+          isSaved,
+        };
+      });
+  };
+
+  const submittedPicksList = getSubmittedPicks();
+  const pendingPicksList = getPendingPicks();
+
+  // Calculate total budget used
+  const totalBudgetUsed = categories.reduce((sum, category) => {
+    return sum + (betAmounts[category.key] || 0);
+  }, 0);
+  const remainingBudget = MAX_BUDGET - totalBudgetUsed;
+  const budgetExceeded = totalBudgetUsed > MAX_BUDGET;
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      {/* Sticky Header Container */}
-      <div className="sticky top-0 z-50 bg-black">
-        {/* Navigation */}
-        <nav className="border-b border-white/10 bg-black py-4">
-          <div className="container-pad flex items-center justify-between">
-            <div className="flex-1"></div>
-            <div className="flex items-center gap-3">
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                FLICK
-              </span>
-              <img
-                src="/images/oscarspoollogo.png"
-                alt="Logo"
-                className="h-10 w-auto"
-              />
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                PICKS
-              </span>
-            </div>
-            <div className="flex-1 flex justify-end gap-4 items-center">
-              {!user && (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    to="/join"
-                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-              {user && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs text-zinc-400">{user.email}</span>
-                  </div>
-                  <Link
-                    to="/logout"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
-                  >
-                    Logout
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
-            <Link to="/" className="hover:text-zinc-200">
-              Home
-            </Link>
-            <Link to="/ballot" className="text-gold-400 hover:text-gold-300">
-              Make Selections
-            </Link>
-            <Link to="/portfolio" className="hover:text-zinc-200">
-              Portfolio
-            </Link>
-            <Link to="/faq" className="hover:text-zinc-200">
-              FAQ
-            </Link>
-          </div>
-        </nav>
+      <Header
+        user={user}
+        currentPage="ballot"
+        budgetInfo={{
+          used: totalBudgetUsed,
+          max: MAX_BUDGET,
+          remaining: remainingBudget,
+          exceeded: budgetExceeded,
+        }}
+      />
 
-        {/* Header Stats */}
-        <div className="text-center space-y-6 py-6 border-b border-white/10 bg-black">
-          <div className="flex justify-center gap-0 md:justify-center border border-gold-400/40 rounded-lg overflow-hidden max-w-6xl mx-auto divide-x divide-gold-400/40">
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Total Selection Amount
-              </div>
-              <div className="text-lg md:text-xl font-bold text-white">
-                ${calculateTotalSelectionAmount().toFixed(2)}
-              </div>
-            </div>
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Potential Profit
-              </div>
-              <div className="text-lg md:text-xl font-bold text-gold-400">
-                ${calculateTotalPotentialWinnings().toFixed(2)}
-              </div>
-            </div>
-            <div className="flex-1 bg-black p-3 text-center">
-              <div className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-zinc-300">
-                Total Return
-              </div>
-              <div className="text-lg md:text-xl font-bold text-green-400">
-                ${calculateTotalReturnAmount().toFixed(2)}
-              </div>
-            </div>
+      {/* Flash Message */}
+      {flashMessage && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold">
+            {flashMessage}
           </div>
-
-          {locked && (
-            <div className="inline-block rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
-              Ballot is locked.
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       <main className="container-pad py-8">
+        {/* Portfolio Card */}
+        {(submittedPicksList.length > 0 || pendingPicksList.length > 0) && (
+          <div className="max-w-3xl mx-auto mb-8">
+            <div className="rounded-lg border border-white/20 bg-zinc-900/30 overflow-hidden">
+              <div className="bg-zinc-900/50 px-6 py-4 border-b border-white/10">
+                <h2 className="text-xl font-bold text-gold-400">Your Picks</h2>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Submitted Picks Section */}
+                {submittedPicksList.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-gold-400 flex items-center gap-2">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                        Submitted ({submittedPicksList.length})
+                      </h3>
+                      <div className="text-xs text-zinc-400">
+                        Total: $
+                        {submittedPicksList
+                          .reduce((sum, pick) => sum + pick.betAmount, 0)
+                          .toFixed(2)}{" "}
+                        → Potential: ${" "}
+                        {submittedPicksList
+                          .reduce((sum, pick) => sum + pick.totalReturn, 0)
+                          .toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {submittedPicksList.map((pick) => (
+                        <div
+                          key={pick.categoryKey}
+                          className="bg-gold-500/5 border border-gold-500/20 rounded p-3 grid grid-cols-[1fr_80px_80px_90px_90px] gap-3 items-center text-xs"
+                        >
+                          <div>
+                            <div className="text-zinc-400 mb-1">
+                              {pick.categoryTitle}
+                            </div>
+                            <div className="text-sm font-semibold text-white">
+                              {pick.nominee}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-zinc-500 mb-1">Bet</div>
+                            <div className="font-mono text-white">
+                              ${pick.betAmount.toFixed(2)}
+                            </div>
+                          </div>
+                          {pick.odds ? (
+                            <>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Odds</div>
+                                <div className="font-mono text-gold-400">
+                                  {formatOdds(pick.odds)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Profit</div>
+                                <div className="font-mono text-gold-400">
+                                  ${pick.profit.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Return</div>
+                                <div className="font-mono text-green-400">
+                                  ${pick.totalReturn.toFixed(2)}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending/Saved Picks Section */}
+                {pendingPicksList.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Pending ({pendingPicksList.length})
+                      </h3>
+                      <div className="text-xs text-zinc-400">
+                        Total: $
+                        {pendingPicksList
+                          .reduce((sum, pick) => sum + pick.betAmount, 0)
+                          .toFixed(2)}{" "}
+                        → Potential: ${" "}
+                        {pendingPicksList
+                          .reduce((sum, pick) => sum + pick.totalReturn, 0)
+                          .toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {pendingPicksList.map((pick) => (
+                        <div
+                          key={pick.categoryKey}
+                          className={`rounded p-3 grid grid-cols-[1fr_80px_80px_90px_90px_100px] gap-3 items-center text-xs ${
+                            pick.isSaved
+                              ? "bg-blue-500/5 border border-blue-500/20"
+                              : "bg-zinc-800/30 border border-zinc-700/30"
+                          }`}
+                        >
+                          <div>
+                            <div className="text-zinc-400 mb-1 flex items-center gap-2">
+                              {pick.categoryTitle}
+                              {pick.isSaved && (
+                                <span className="text-[10px] uppercase tracking-wider bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                                  Saved
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm font-semibold text-white">
+                              {pick.nominee}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-zinc-500 mb-1">Bet</div>
+                            <div className="font-mono text-white">
+                              ${pick.betAmount.toFixed(2)}
+                            </div>
+                          </div>
+                          {pick.odds ? (
+                            <>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Odds</div>
+                                <div className="font-mono text-gold-400">
+                                  {formatOdds(pick.odds)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Profit</div>
+                                <div className="font-mono text-gold-400">
+                                  ${pick.profit.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-zinc-500 mb-1">Return</div>
+                                <div className="font-mono text-green-400">
+                                  ${pick.totalReturn.toFixed(2)}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div></div>
+                              <div></div>
+                              <div></div>
+                            </>
+                          )}
+                          <div className="text-center">
+                            {pick.isSaved && (
+                              <button
+                                onClick={() =>
+                                  handleUnsavePick(pick.categoryKey)
+                                }
+                                className="px-2 py-1 text-[10px] font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors"
+                              >
+                                Unsave
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {locked && (
+                  <div className="rounded border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 text-center">
+                    Ballot is locked.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Categories Grid - Single Column */}
         <div className="max-w-3xl mx-auto space-y-6">
           {categories.map((c) => (
             <div
               key={c.key}
-              className="rounded-lg border border-gold-500/30 bg-black p-1"
+              className="rounded-lg border border-gold-500/30 bg-[#242424] p-1"
             >
               <div className="text-center py-2 border-b border-white/10 bg-zinc-900/40 rounded-t">
-                <h3 className="font-[var(--font-inter)] text-xl text-zinc-100">
-                  {c.title}
-                </h3>
+                <h3 className="h2">{c.title}</h3>
               </div>
               <div className="p-3 space-y-3">
                 {c.nominees.map((nominee) => {
                   const nomineeStr = formatNominee(nominee);
                   const isSelected = localPicks[c.key] === nomineeStr;
-                  const isLocked = lockedPicks[c.key] || false;
+                  const isSaved = savedPicks[c.key] || false;
+                  const isSubmitted = submittedPicks[c.key] || false;
                   const betAmount = betAmounts[c.key] || 0;
                   const profit =
                     isSelected && nominee.odds && betAmount > 0
@@ -622,38 +1216,164 @@ export default function Ballot() {
                       ? calculateTotalReturn(betAmount, nominee.odds)
                       : 0;
 
+                  const isHearted = heartPicks[c.key] === nomineeStr;
+
                   return (
                     <div key={nomineeStr} className="space-y-2">
-                      <button
-                        onClick={() => handleSelect(c.key, nomineeStr)}
-                        disabled={locked || isLocked}
-                        className={`w-full text-left flex justify-between items-center px-3 py-2 rounded text-[11px] md:text-xs transition-colors ${
-                          isSelected
-                            ? isLocked
-                              ? "bg-gold-500/20 text-gold-400 font-semibold border border-gold-500/40"
-                              : "bg-white/10 text-green-400 font-semibold"
-                            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                        } ${
-                          (locked || isLocked) &&
-                          "cursor-not-allowed opacity-60"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span>{nomineeStr}</span>
-                          {nominee.odds && (
-                            <span className="text-[11px] md:text-xs text-gold-400 font-mono">
-                              {formatOdds(nominee.odds)}
-                            </span>
+                      <div className="flex items-center gap-1.5">
+                        {/* Heart button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleHeartPick(c.key, nomineeStr);
+                          }}
+                          className={`shrink-0 p-1.5 rounded transition-colors hover:bg-white/10 ${
+                            isHearted
+                              ? "text-red-500"
+                              : "text-zinc-500 hover:text-red-400"
+                          }`}
+                          aria-label={
+                            isHearted ? "Remove heart" : "Heart this pick"
+                          }
+                        >
+                          {isHearted ? (
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="w-4 h-4"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              />
+                            </svg>
                           )}
-                        </span>
-                        <span className="flex items-center gap-2">
-                          {isSelected && !isLocked && (
-                            <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
-                              Picked
-                            </span>
-                          )}
-                          {isSelected && isLocked && (
-                            <span className="text-xs uppercase tracking-wider text-gold-400 font-bold bg-gold-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        </button>
+                        <button
+                          onClick={() => handleSelect(c.key, nomineeStr)}
+                          disabled={
+                            locked || isSubmitted || (isSaved && !isSelected)
+                          }
+                          className={`flex-1 text-left flex justify-between items-center px-3 py-2 rounded text-[11px] md:text-xs transition-colors ${
+                            isSelected
+                              ? isSubmitted
+                                ? "bg-gold-500/20 text-gold-400 font-semibold border border-gold-500/40"
+                                : isSaved
+                                ? "bg-blue-500/20 text-blue-400 font-semibold border border-blue-500/40"
+                                : "bg-white/10 text-green-400 font-semibold"
+                              : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                          } ${
+                            (locked ||
+                              isSubmitted ||
+                              (isSaved && !isSelected)) &&
+                            "cursor-not-allowed opacity-60"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{nomineeStr}</span>
+                            {nominee.odds && (
+                              <span className="text-[11px] md:text-xs text-gold-400 font-mono">
+                                {formatOdds(nominee.odds)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            {isSelected && !isSaved && !isSubmitted && (
+                              <span className="text-xs uppercase tracking-wider text-green-500 font-bold bg-green-900/20 px-1.5 py-0.5 rounded">
+                                Picked
+                              </span>
+                            )}
+                            {isSelected && isSaved && !isSubmitted && (
+                              <span className="text-xs uppercase tracking-wider text-blue-400 font-bold bg-blue-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                                Saved
+                              </span>
+                            )}
+                            {isSelected && isSubmitted && (
+                              <span className="text-xs uppercase tracking-wider text-gold-400 font-bold bg-gold-900/20 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                  />
+                                </svg>
+                                Submitted
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* For nominees WITHOUT odds - show a simple picked state with remove option */}
+                      {isSelected &&
+                        !nominee.odds &&
+                        !isSaved &&
+                        !isSubmitted && (
+                          <div className="p-3 bg-zinc-900/50 rounded border border-green-500/20 space-y-2">
+                            <div className="text-xs text-zinc-400 text-center">
+                              This category doesn't have betting odds. You can
+                              still track your pick.
+                            </div>
+                            <button
+                              onClick={() => {
+                                // Deselect the nominee
+                                setLocalPicks((prev) => {
+                                  const newPicks = { ...prev };
+                                  delete newPicks[c.key];
+                                  return newPicks;
+                                });
+
+                                // If not logged in, update localStorage
+                                if (!user && typeof window !== "undefined") {
+                                  const newPicks = { ...localPicks };
+                                  delete newPicks[c.key];
+                                  localStorage.setItem(
+                                    "guestPicks",
+                                    JSON.stringify(newPicks)
+                                  );
+                                } else if (user) {
+                                  // If logged in, delete the pick from server
+                                  const formData = new FormData();
+                                  formData.append("intent", "deletePick");
+                                  formData.append("categoryKey", c.key);
+                                  submit(formData, {
+                                    method: "post",
+                                    replace: true,
+                                  });
+                                }
+                              }}
+                              className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors flex items-center justify-center gap-2"
+                            >
                               <svg
                                 className="w-3 h-3"
                                 fill="none"
@@ -664,45 +1384,57 @@ export default function Ballot() {
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth={2}
-                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                  d="M6 18L18 6M6 6l12 12"
                                 />
                               </svg>
-                              Locked
-                            </span>
-                          )}
-                        </span>
-                      </button>
-
-                      {isSelected && nominee.odds && (
-                        <div className="ml-3 p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <label className="text-[10px] md:text-[11px] text-zinc-400 whitespace-nowrap">
-                              Bet Amount:
-                            </label>
-                            <div className="relative flex-1">
-                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] md:text-[11px] text-zinc-500">
-                                $
-                              </span>
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={betAmount || ""}
-                                onChange={(e) =>
-                                  handleBetAmountChange(c.key, e.target.value)
-                                }
-                                onBlur={() =>
-                                  handleBetAmountBlur(c.key, nomineeStr)
-                                }
-                                disabled={locked || isLocked}
-                                placeholder="0.00"
-                                className="w-full pl-5 pr-2 py-1 bg-black border border-zinc-700 rounded text-[10px] md:text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-gold-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                              />
-                            </div>
+                              Remove This Pick
+                            </button>
                           </div>
+                        )}
 
-                          {betAmount > 0 && (
-                            <div className="text-xs space-y-1 pt-2 border-t border-zinc-700">
+                      {isSelected &&
+                        nominee.odds &&
+                        !isSaved &&
+                        !isSubmitted && (
+                          <div
+                            ref={(el) => {
+                              betSectionRefs.current[c.key] = el;
+                            }}
+                            className="p-3 bg-zinc-900/50 rounded border border-gold-500/20 space-y-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] md:text-[11px] text-zinc-400 whitespace-nowrap">
+                                Bet Amount:
+                              </label>
+                              <div className="relative flex-1">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] md:text-[11px] text-zinc-500">
+                                  $
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={betAmount || ""}
+                                  onChange={(e) =>
+                                    handleBetAmountChange(c.key, e.target.value)
+                                  }
+                                  onBlur={() =>
+                                    handleBetAmountBlur(c.key, nomineeStr)
+                                  }
+                                  disabled={locked || isSubmitted}
+                                  placeholder="0.00"
+                                  className="w-full pl-5 pr-2 py-1 bg-black border border-zinc-700 rounded text-[10px] md:text-[11px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-gold-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                />
+                              </div>
+                            </div>
+
+                            <div
+                              className={`text-xs space-y-1 pt-2 border-t transition-opacity duration-200 ${
+                                betAmount > 0
+                                  ? "opacity-100 border-zinc-700"
+                                  : "opacity-0 border-transparent pointer-events-none"
+                              }`}
+                            >
                               <div className="flex justify-between">
                                 <span className="text-zinc-400">
                                   Potential Profit:
@@ -720,53 +1452,106 @@ export default function Ballot() {
                                 </span>
                               </div>
                             </div>
-                          )}
 
-                          {/* Lock Button (only show if not locked) */}
-                          {!isLocked && (
-                            <div className="pt-2 border-t border-zinc-700">
-                              <button
-                                onClick={() => handleLockPick(c.key)}
-                                disabled={locked || betAmount <= 0}
-                                className="w-full px-3 py-2 text-xs font-medium bg-gold-500/10 border border-gold-500/30 text-gold-400 rounded hover:bg-gold-500/20 hover:border-gold-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                              >
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                  />
-                                </svg>
-                                {user ? "Lock This Pick" : "Sign Up to Lock"}
-                              </button>
-                            </div>
-                          )}
-                          {isLocked && (
-                            <div className="pt-2 border-t border-zinc-700 text-center">
-                              <div className="text-xs text-gold-400/70 italic flex items-center justify-center gap-2">
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                  />
-                                </svg>
-                                This pick is locked
+                            {/* Save/Unsave Buttons */}
+                            {!isSubmitted && (
+                              <div className="pt-2 border-t border-zinc-700">
+                                {!isSaved && (
+                                  <button
+                                    onClick={() => handleSavePick(c.key)}
+                                    disabled={
+                                      locked || betAmount <= 0 || budgetExceeded
+                                    }
+                                    className="w-full px-3 py-2 text-xs font-medium bg-gold-500/10 border border-gold-500/30 text-gold-400 rounded hover:bg-gold-500/20 hover:border-gold-500/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                  >
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                    {user
+                                      ? "Save This Pick"
+                                      : "Sign Up to Save"}
+                                  </button>
+                                )}
+                                {isSaved && (
+                                  <button
+                                    onClick={() => handleUnsavePick(c.key)}
+                                    disabled={locked}
+                                    className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                  >
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                    Unsave This Pick
+                                  </button>
+                                )}
                               </div>
-                            </div>
-                          )}
+                            )}
+                            {isSubmitted && (
+                              <div className="pt-2 border-t border-zinc-700 text-center">
+                                <div className="text-xs text-gold-400/70 italic flex items-center justify-center gap-2">
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                    />
+                                  </svg>
+                                  This pick is submitted
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                      {/* Unsave button for saved picks (shown outside bet section) */}
+                      {isSelected && isSaved && !isSubmitted && (
+                        <div>
+                          <button
+                            onClick={() => handleUnsavePick(c.key)}
+                            disabled={locked}
+                            className="w-full px-3 py-2 text-xs font-medium bg-zinc-800 border border-zinc-600 text-zinc-300 rounded hover:bg-zinc-700 hover:border-zinc-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                            Unsave This Pick
+                          </button>
                         </div>
                       )}
                     </div>
@@ -779,34 +1564,51 @@ export default function Ballot() {
 
         {/* Action Buttons */}
         <div className="max-w-3xl mx-auto mt-8 space-y-4">
-          {/* Lock All Picks Button */}
-          {!locked && getPicksToLock().length > 0 && (
+          {/* Submit All Picks Button */}
+          {!locked && getPicksToSubmit().length > 0 && (
             <div className="flex justify-center">
               <button
-                onClick={() =>
+                onClick={() => {
+                  if (budgetExceeded) {
+                    alert(
+                      `Cannot submit: Your total bets exceed your budget of $${MAX_BUDGET}.`
+                    );
+                    return;
+                  }
                   user
-                    ? setShowLockAllModal(true)
-                    : (window.location.href = "/join?redirectTo=/ballot")
-                }
-                className="rounded-full bg-gold-400 px-8 py-3 font-bold text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)] transition-all"
+                    ? setShowSubmitAllModal(true)
+                    : (window.location.href = "/join?redirectTo=/ballot");
+                }}
+                disabled={budgetExceeded}
+                className={`rounded-full px-8 py-3 font-bold transition-all ${
+                  budgetExceeded
+                    ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    : "bg-gold-400 text-black shadow-[0_0_20px_rgba(231,200,106,0.3)] hover:bg-gold-500 hover:shadow-[0_0_30px_rgba(231,200,106,0.5)]"
+                }`}
               >
-                {user ? "Lock All Picks" : "Sign Up to Lock Picks"}
+                {budgetExceeded
+                  ? "Budget Exceeded"
+                  : user
+                  ? "Submit All Saved Picks"
+                  : "Sign Up to Submit"}
               </button>
             </div>
           )}
 
-          {/* Clear Unlocked Picks Button */}
+          {/* Clear Unsaved Picks Button */}
           {!locked &&
-            Object.keys(localPicks).some((key) => !lockedPicks[key]) && (
+            Object.keys(localPicks).some(
+              (key) => !savedPicks[key] && !submittedPicks[key]
+            ) && (
               <div className="flex justify-center">
                 <Form method="post">
-                  <input type="hidden" name="intent" value="clearUnlocked" />
+                  <input type="hidden" name="intent" value="clearUnsaved" />
                   <button
                     type="submit"
                     onClick={(e) => {
                       if (
                         !confirm(
-                          "Are you sure you want to clear all unlocked selections? This cannot be undone."
+                          "Are you sure you want to clear all unsaved selections? This cannot be undone."
                         )
                       ) {
                         e.preventDefault();
@@ -814,7 +1616,7 @@ export default function Ballot() {
                     }}
                     className="rounded-full bg-zinc-800 px-8 py-3 font-medium text-zinc-300 border border-zinc-600 hover:bg-zinc-700 hover:border-zinc-500 transition-all"
                   >
-                    Clear Unlocked Picks
+                    Clear Unsaved Picks
                   </button>
                 </Form>
               </div>
@@ -822,16 +1624,16 @@ export default function Ballot() {
         </div>
       </main>
 
-      {/* Lock All Confirmation Modal */}
-      {showLockAllModal && (
+      {/* Submit All Confirmation Modal */}
+      {showSubmitAllModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg border border-gold-500/30 bg-zinc-900 p-6">
             <h2 className="font-[var(--font-inter)] text-5xl text-gold-400 mb-4">
-              Confirm Lock All Picks
+              Confirm Submit All Picks
             </h2>
             <p className="text-zinc-300 text-sm mb-6">
-              You are about to lock the following picks. Once locked, you won't
-              be able to change them unless you unlock them first.
+              You are about to submit the following saved picks. Once submitted,
+              you won't be able to change them unless you unlock them first.
             </p>
 
             {/* Summary Table */}
@@ -860,7 +1662,7 @@ export default function Ballot() {
                   </tr>
                 </thead>
                 <tbody>
-                  {getPicksToLock().map((pick) => (
+                  {getPicksToSubmit().map((pick) => (
                     <tr
                       key={pick.categoryKey}
                       className="border-b border-white/10"
@@ -895,19 +1697,19 @@ export default function Ballot() {
                     </td>
                     <td className="p-3 text-right font-bold text-white font-mono">
                       $
-                      {getPicksToLock()
+                      {getPicksToSubmit()
                         .reduce((sum, pick) => sum + pick.betAmount, 0)
                         .toFixed(2)}
                     </td>
                     <td className="p-3 text-right font-bold text-gold-400 font-mono">
                       $
-                      {getPicksToLock()
+                      {getPicksToSubmit()
                         .reduce((sum, pick) => sum + pick.profit, 0)
                         .toFixed(2)}
                     </td>
                     <td className="p-3 text-right font-bold text-green-400 font-mono">
                       $
-                      {getPicksToLock()
+                      {getPicksToSubmit()
                         .reduce((sum, pick) => sum + pick.totalReturn, 0)
                         .toFixed(2)}
                     </td>
@@ -919,16 +1721,16 @@ export default function Ballot() {
             {/* Action Buttons */}
             <div className="flex gap-4 justify-end">
               <button
-                onClick={() => setShowLockAllModal(false)}
+                onClick={() => setShowSubmitAllModal(false)}
                 className="px-6 py-2 rounded-lg border border-zinc-600 text-zinc-300 hover:bg-zinc-800 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleLockAll}
+                onClick={handleSubmitAll}
                 className="px-6 py-2 rounded-lg bg-gold-400 text-black font-bold hover:bg-gold-500 transition-colors"
               >
-                Confirm & Lock All
+                Confirm & Submit All
               </button>
             </div>
           </div>

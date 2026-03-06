@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { getUser } from "../utils/auth.server";
 import { getTopNominatedMovies, type MovieStats } from "../lib/ballot-stats";
 import { BALLOT_CATEGORIES } from "../lib/ballot-data";
+import { Header } from "../components/Header";
 
 const keyDates = [
   { date: "Jan 22", event: "98th Oscars Nominations Announcement" },
@@ -94,79 +95,38 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-gold-500/30">
-      {/* Sticky Header Container */}
-      <div className="sticky top-0 z-50 bg-black">
-        {/* Navigation */}
-        <nav className="border-b border-white/10 bg-black py-4">
-          <div className="container-pad flex items-center justify-between">
-            <div className="flex-1"></div> {/* Spacer to center logo */}
-            <div className="flex items-center gap-3">
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                FLICK
-              </span>
-              <img
-                src="/images/oscarspoollogo.png"
-                alt="Logo"
-                className="h-10 w-auto"
-              />{" "}
-              {/* Assuming generic logo or statuette */}
-              <span className="font-[var(--font-inter)] text-5xl tracking-widest text-gold-400">
-                PICKS
-              </span>
-            </div>
-            <div className="flex-1 flex justify-end gap-4">
-              {!user && (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-300 hover:text-white border border-zinc-700 px-3 py-1 rounded"
-                  >
-                    Log In
-                  </Link>
-                  <Link
-                    to="/join"
-                    className="text-xs font-semibold uppercase tracking-wider text-black bg-gold-400 hover:bg-gold-500 px-3 py-1 rounded"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-              {user && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs text-zinc-400">{user.email}</span>
-                  </div>
-                  <Link
-                    to="/logout"
-                    className="text-xs font-semibold uppercase tracking-wider text-zinc-400 hover:text-white transition-colors"
-                  >
-                    Logout
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex justify-center gap-8 border-t border-white/10 py-3 text-2xl font-medium tracking-wide text-zinc-400">
-            <Link to="/" className="text-gold-400 hover:text-gold-300">
-              Home
-            </Link>
-            <Link to="/ballot" className="hover:text-zinc-200">
-              Make Selections
-            </Link>
-            <Link to="/portfolio" className="hover:text-zinc-200">
-              Portfolio
-            </Link>
-            <Link to="/faq" className="hover:text-zinc-200">
-              FAQ
-            </Link>
-          </div>
-        </nav>
-      </div>
+      <Header user={user} currentPage="home" />
 
       <main className="container-pad space-y-20 py-12">
+        {/* Key Event Dates */}
+        <section className="rounded-2xl border border-white/10 bg-[#242424] p-8">
+          <h2 className="h2 mb-8 text-center">Key Event Dates</h2>
+          <div className="mx-auto max-w-4xl space-y-3">
+            {keyDates.map((item, idx) => (
+              <div key={idx} className="flex gap-4 text-sm">
+                <span
+                  className={`w-28 flex-shrink-0 font-bold ${
+                    item.color || "text-gold-400"
+                  }`}
+                >
+                  {item.date}
+                </span>
+                <span
+                  className={
+                    item.highlight
+                      ? "text-base font-semibold text-white"
+                      : "text-zinc-400"
+                  }
+                >
+                  {item.event}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Top 10 Most Nominated Movies */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8 relative">
+        <section className="rounded-2xl border border-white/10 bg-[#242424] p-8 relative">
           {/* Left Arrow */}
           <button
             onClick={scrollLeft}
@@ -209,9 +169,7 @@ export default function Index() {
             </svg>
           </button>
 
-          <h2 className="text-center font-[var(--font-inter)] text-3xl font-bold text-white mb-8">
-            Top 10 Most Nominated Movies
-          </h2>
+          <h2 className="h2 text-center mb-8">Top 10 Most Nominated Movies</h2>
 
           <div className="relative">
             <div
@@ -238,9 +196,7 @@ export default function Index() {
                     )}
                   </div>
                   <div className="flex flex-col gap-1 text-left">
-                    <div className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                      {movie.movieName}
-                    </div>
+                    <div className="h3">{movie.movieName}</div>
                     <div className="text-[10px] text-gold-400">
                       {movie.nominationCount} nominations
                     </div>
@@ -248,35 +204,6 @@ export default function Index() {
                 </button>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* Key Event Dates */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/30 p-8">
-          <h2 className="mb-8 text-center font-[var(--font-inter)] text-3xl font-bold text-white">
-            Key Event Dates
-          </h2>
-          <div className="mx-auto max-w-4xl space-y-3">
-            {keyDates.map((item, idx) => (
-              <div key={idx} className="flex gap-4 text-sm">
-                <span
-                  className={`w-28 flex-shrink-0 font-bold ${
-                    item.color || "text-gold-400"
-                  }`}
-                >
-                  {item.date} —
-                </span>
-                <span
-                  className={
-                    item.highlight
-                      ? "font-semibold text-white"
-                      : "text-zinc-400"
-                  }
-                >
-                  {item.event}
-                </span>
-              </div>
-            ))}
           </div>
         </section>
       </main>

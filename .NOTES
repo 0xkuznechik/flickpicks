@@ -1,0 +1,38 @@
+TODO
+
+  db
+  - sort out how prisma and the db work, esp with docker
+  - learn how to access admin page
+
+  front page
+  - update dates dynamically
+
+  security
+  - .env.example
+    Update secret keys.
+  - cloudflare forwarding security
+    Configure cloudflare.
+    Deploy current changes.
+
+	user accounts
+  - turn off new sign-ups
+  - allowlist of specific emails; preset the passwords
+	- update db logic and storage so they're all hashed; no access to passwds for
+	  admin
+  - **IMPORTANT: Email Confirmation Setup**
+    - Add `RESEND_API_KEY` and `FROM_EMAIL` to your `.env` file for email sending to work.
+    - Update `ALLOWED_EMAILS` in `app/routes/join.tsx` with your actual allowed email addresses.
+    - Ensure Cloudflare is configured to correctly forward requests to your Remix app for the confirmation links to work.
+
+NOTES
+
+Commands
+
+# Linter
+npx prettier --write path/to/your/file.ts
+
+# "Compile" file
+npx tsc yourfile.ts --noEmit
+
+# "Compile" project
+npx tsc --project tsconfig.json --noEmit

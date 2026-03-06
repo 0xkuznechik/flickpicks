@@ -10,19 +10,23 @@ import {
   Meta,
   Outlet,
   Scripts,
-  ScrollRestoration,
   useLoaderData,
 } from "@remix-run/react";
 import stylesheet from "./styles/tailwind.css?url";
 import { getUser } from "./utils/auth.server";
 
 export const meta: MetaFunction = () => [
-  { title: "Oscars Pool" },
+  { title: "Flick Picks" },
   { name: "viewport", content: "width=device-width, initial-scale=1" },
 ];
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
+  {
+    rel: "stylesheet",
+    href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap",
+  },
+  { rel: "icon", href: "/favicon.png", type: "image/png" },
 ];
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -44,7 +48,6 @@ export default function App() {
           <Outlet />
         </main>
 
-        <ScrollRestoration />
         <Scripts />
         <LiveReload />
       </body>
